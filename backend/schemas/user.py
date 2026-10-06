@@ -14,12 +14,20 @@ class EmploymentType(str, Enum):
 class CreateEmployeeRequest(BaseModel):
     first_name: str
     last_name: str
-    email: EmailStr             # work email = login
-    personal_email: EmailStr    # credentials are sent here
+    email: EmailStr
     role_id: int
     date_of_joining: date
     employment_type: EmploymentType
     department_id: int
     designation_id: int
     manager_id: int | None = None
-    # no `status`: the system always starts people as ONBOARDING
+
+
+class CreateEmployeeResponse(BaseModel):
+    message: str
+    employee_id: int
+    employee_code: str
+    user_id: int
+    role_id: int
+    email: EmailStr
+    temporary_password: str

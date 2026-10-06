@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from database import engine
 from models.user import User
 
 from schemas.auth import (
@@ -15,10 +14,10 @@ from services.auth_service import (
     change_password
 )
 
-from utils.dependencies import get_current_user
-
-from sqlalchemy.orm import Session
-from utils.dependencies import get_current_user, get_db
+from utils.dependencies import (
+    get_current_user,
+    get_db
+)
 
 
 router = APIRouter(
@@ -27,10 +26,12 @@ router = APIRouter(
 )
 
 
-
 # ----- LOGIN ROUTE ----- #
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse
+)
 def login(
     user_data: LoginRequest,
     db: Session = Depends(get_db)

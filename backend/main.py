@@ -17,8 +17,15 @@ app.add_middleware(
 )
 
 
-app.include_router(auth.router)
-app.include_router(employee.router)
+app.include_router(
+    auth.router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    employee.router,
+    prefix="/api/v1"
+)
 
 
 @app.get("/")

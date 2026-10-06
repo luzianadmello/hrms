@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 
 from models.user import User
 from schemas.employee import EmployeeProfileUpdate, EmployeeProfileResponse
-from schemas.user import CreateEmployeeRequest
+from schemas.user import (
+    CreateEmployeeRequest,
+    CreateEmployeeResponse
+)
 from services.employee_service import get_employee_profile, update_employee_profile
 from services.user_service import create_employee
 from utils.dependencies import get_db, get_ready_user, require_permission
@@ -11,7 +14,7 @@ from utils.dependencies import get_db, get_ready_user, require_permission
 router = APIRouter(prefix="/employees", tags=["Employee"])
 
 
-@router.post("")
+@router.post("", response_model=CreateEmployeeResponse)
 def create_employee_account(
     employee_data: CreateEmployeeRequest,
     db: Session = Depends(get_db),

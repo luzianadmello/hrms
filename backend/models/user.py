@@ -58,11 +58,11 @@ class User(Base):
     )
 
     last_login = Column(
-        DateTime(timezone=False),
+        DateTime(timezone=True),
         nullable=True
     )
 
     created_at = Column(
-        DateTime(timezone=False),
+        DateTime(timezone=True),
         server_default=func.now()
     )

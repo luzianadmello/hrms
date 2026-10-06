@@ -82,13 +82,3 @@ class Employee(Base):
         ForeignKey("employees.employee_id"),
         nullable=True
     )
-
-    personal_email = Column(String, nullable=True)
-
-    profile_completed_at = Column(DateTime, nullable=True)
-
-    created_by = Column(
-        Integer,
-        ForeignKey("employees.employee_id"),
-        nullable=True
-    )

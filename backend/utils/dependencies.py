@@ -1,70 +1,99 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from database import engine
+from config import settings
+from database import get_db
+
 from models.user import User
-from models.permission import Permission
 from models.role_permission import RolePermission
-from utils.security import SECRET_KEY, ALGORITHM
-
-security = HTTPBearer()
+from models.permission import Permission
 
 
-def get_db():
-    db = Session(bind=engine)
-    try:
-        yield db
-    finally:
-        db.close()
+bearer_scheme = HTTPBearer()
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
 ):
-    """Valid token + active user. Does NOT check must_change_password."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    token = credentials.credentials
+
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm]
+        )
+
         user_id = payload.get("user_id")
+
+        if user_id is None:
+            raise credentials_exception
+
     except JWTError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
+        raise credentials_exception
 
-    if user_id is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+    user = db.query(User).filter(
+        User.user_id == user_id
+    ).first()
 
-    user = db.query(User).filter(User.user_id == user_id).first()
     if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
-    if not user.is_active:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "User account is inactive")
+        raise credentials_exception
+
     return user
 
 
-def get_ready_user(user: User = Depends(get_current_user)):
-    """Use on every route EXCEPT /auth/change-password and /auth/me."""
-    if user.must_change_password:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "PASSWORD_CHANGE_REQUIRED")
-    return user
+def get_ready_user(
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+
+    if current_user.must_change_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password change required"
+        )
+
+    return current_user
 
 
-def require_permission(permission_name: str):
-    def checker(
+def require_permission(permission: str):
+    def permission_checker(
         current_user: User = Depends(get_ready_user),
-        db: Session = Depends(get_db),
+        db: Session = Depends(get_db)
     ):
-        allowed = (
+        has_permission = (
             db.query(Permission)
-            .join(RolePermission, RolePermission.permission_id == Permission.permission_id)
+            .join(
+                RolePermission,
+                RolePermission.permission_id == Permission.permission_id
+            )
             .filter(
                 RolePermission.role_id == current_user.role_id,
-                Permission.permission_name == permission_name,
+                Permission.permission_name == permission
             )
             .first()
         )
-        if not allowed:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied")
+
+        if not has_permission:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied"
+            )
+
         return current_user
 
-    return checker
+    return permission_checker

@@ -1,10 +1,9 @@
-from datetime import date, datetime
+from datetime import date
 from pydantic import BaseModel, ConfigDict
 
 
 class EmployeeProfileUpdate(BaseModel):
-    # Employee-editable only. Name, department, designation, manager
-    # are HR-owned and deliberately NOT here.
+    # Employee-editable fields only.
     phone: str | None = None
     dob: date | None = None
 
@@ -33,4 +32,3 @@ class EmployeeProfileResponse(BaseModel):
     designation_id: int | None
     manager_id: int | None
     residential_address_id: int | None
-    profile_completed_at: datetime | None

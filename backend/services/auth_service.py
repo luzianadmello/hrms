@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from schemas.auth import (
     LoginRequest,
     ChangePasswordRequest
 )
+
 
 from utils.security import (
     verify_password,
@@ -46,7 +47,7 @@ def login_user(
             detail="Invalid email or password"
         )
 
-    user.last_login = datetime.now()
+    user.last_login = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(user)
