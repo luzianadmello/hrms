@@ -30,12 +30,17 @@ def create_admin():
             print(f"Admin email: {existing_admin.email}")
             return
 
-        email = input("Admin email: ").strip()
+        # Lowercase so it matches how login normalises emails
+        email = input("Admin email: ").strip().lower()
         password = getpass("Admin password: ")
         confirm_password = getpass("Confirm password: ")
 
         if password != confirm_password:
             print("Passwords do not match.")
+            return
+
+        if len(password) < 8:
+            print("Password must be at least 8 characters long.")
             return
 
         existing_user = db.query(User).filter(
@@ -46,11 +51,15 @@ def create_admin():
             print("A user with this email already exists.")
             return
 
+        # The admin picks their own password here and has no employee
+        # record, so there is nothing to force them through on first login.
         new_admin = User(
             email=email,
             password_hash=hash_password(password),
             role_id=admin_role.id,
-            is_active=True
+            is_active=True,
+            must_change_password=False,
+            profile_completed=True,
         )
 
         db.add(new_admin)

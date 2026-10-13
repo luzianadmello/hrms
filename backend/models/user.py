@@ -4,7 +4,8 @@ from sqlalchemy import (
     String,
     DateTime,
     Boolean,
-    ForeignKey
+    ForeignKey,
+    text,
 )
 from sqlalchemy.sql import func
 
@@ -14,55 +15,42 @@ from database import Base
 class User(Base):
     __tablename__ = "users"
 
-    user_id = Column(
-        Integer,
-        primary_key=True,
-        index=True
-    )
+    user_id = Column(Integer, primary_key=True, index=True)
 
-    role_id = Column(
-        Integer,
-        ForeignKey("roles.id"),
-        nullable=False
-    )
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
 
     employee_id = Column(
         Integer,
         ForeignKey("employees.employee_id"),
         unique=True,
-        nullable=True
+        nullable=True,
     )
 
-    email = Column(
-        String,
-        unique=True,
+    email = Column(String, unique=True, nullable=False, index=True)
+
+    password_hash = Column(String, nullable=False)
+
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    must_change_password = Column(Boolean, default=True, nullable=False)
+
+    # False until the user has saved the Complete Profile form.
+    profile_completed = Column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
         nullable=False,
-        index=True
     )
 
-    password_hash = Column(
-        String,
-        nullable=False
+    # Bumped on logout / password change. Every JWT carries the value it was
+    # issued with, so bumping this instantly invalidates all older tokens.
+    token_version = Column(
+        Integer,
+        default=0,
+        server_default=text("0"),
+        nullable=False,
     )
 
-    is_active = Column(
-        Boolean,
-        default=True,
-        nullable=False
-    )
+    last_login = Column(DateTime(timezone=True), nullable=True)
 
-    must_change_password = Column(
-        Boolean,
-        default=True,
-        nullable=False
-    )
-
-    last_login = Column(
-        DateTime(timezone=True),
-        nullable=True
-    )
-
-    created_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now()
-    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

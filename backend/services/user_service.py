@@ -84,6 +84,7 @@ def create_employee(
             first_name=data.first_name.strip(),
             last_name=data.last_name.strip(),
             email=email,
+            dob=data.dob,
             date_of_joining=data.date_of_joining,
             employment_type=data.employment_type.value,
             status="ONBOARDING",
