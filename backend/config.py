@@ -1,25 +1,29 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
-    # Application
     app_name: str = "HRMS"
-    environment: str = "development"
+    # Fail-closed: set ENVIRONMENT=development in your local .env
+    environment: str = "production"
 
-    # Database
     database_url: str
 
-    # JWT
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
-    # CORS: comma-separated list of allowed frontend origins
     cors_origins: str = "http://localhost:5173"
 
-    # Login throttling (per email + IP), see utils/login_throttle.py
     login_max_attempts: int = 5
     login_lock_minutes: int = 15
+
+    # Email. Leave smtp_host empty in development: emails print to the console.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -27,6 +31,14 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def _check_secret(self):
+        if self.secret_key in ("", "change-me") or len(self.secret_key) < 32:
+            raise ValueError(
+                "SECRET_KEY must be a random string of at least 32 characters"
+            )
+        return self
 
     @property
     def cors_origin_list(self) -> list[str]:
