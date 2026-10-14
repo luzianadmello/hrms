@@ -12,9 +12,10 @@ import EmployeeDirectoryPage from "./pages/employees/EmployeeDirectoryPage";
 import CreateEmployee from "./pages/employees/CreateEmployee";
 import ProfilePage from "./pages/profile/ProfilePage";
 
-// Role IDs
-const ADMIN_AND_HR = [1, 2];
-const STAFF_VIEWERS = [1, 2, 4];
+// Permission names come from the database (role_permissions).
+// Keep these at module level so they are stable between renders.
+const CAN_CREATE_USERS = "user.create";
+const CAN_VIEW_EMPLOYEES = ["employee.view_all", "employee.view_team"];
 
 function App() {
   return (
@@ -56,7 +57,7 @@ function App() {
         <Route
           path="/employees"
           element={
-            <ProtectedRoute allowedRoles={ADMIN_AND_HR}>
+            <ProtectedRoute requiredPermission={CAN_CREATE_USERS}>
               <EmployeeManagement />
             </ProtectedRoute>
           }
@@ -66,7 +67,7 @@ function App() {
         <Route
           path="/employees/directory"
           element={
-            <ProtectedRoute allowedRoles={STAFF_VIEWERS}>
+            <ProtectedRoute requiredPermission={CAN_VIEW_EMPLOYEES}>
               <EmployeeDirectoryPage />
             </ProtectedRoute>
           }
@@ -76,7 +77,7 @@ function App() {
         <Route
           path="/employees/create"
           element={
-            <ProtectedRoute allowedRoles={ADMIN_AND_HR}>
+            <ProtectedRoute requiredPermission={CAN_CREATE_USERS}>
               <CreateEmployee />
             </ProtectedRoute>
           }
@@ -86,7 +87,7 @@ function App() {
         <Route
           path="/employees/:id"
           element={
-            <ProtectedRoute allowedRoles={ADMIN_AND_HR}>
+            <ProtectedRoute requiredPermission={CAN_VIEW_EMPLOYEES}>
               <ProfilePage />
             </ProtectedRoute>
           }

@@ -6,9 +6,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
+class LoginResponse(BaseModel):
     must_change_password: bool
     profile_completed: bool
     role_id: int
@@ -23,7 +21,5 @@ class ChangePasswordRequest(BaseModel):
 
 class ChangePasswordResponse(BaseModel):
     message: str
-    access_token: str
-    token_type: str
     role_id: int
     profile_completed: bool

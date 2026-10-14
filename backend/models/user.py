@@ -42,15 +42,6 @@ class User(Base):
         nullable=False,
     )
 
-    # Bumped on logout / password change. Every JWT carries the value it was
-    # issued with, so bumping this instantly invalidates all older tokens.
-    token_version = Column(
-        Integer,
-        default=0,
-        server_default=text("0"),
-        nullable=False,
-    )
-
     last_login = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

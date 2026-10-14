@@ -37,7 +37,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../services/api";
-import { getRoleId } from "../../utils/auth";
+import { can } from "../../utils/permissions";
 import { getErrorMessage } from "../../utils/errors";
 import type { EmployeeProfile } from "../../types/employee";
 
@@ -99,8 +99,7 @@ const labelSx = {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
-  const roleId = getRoleId();
-  const isHR = roleId === 1 || roleId === 2;
+  const isHR = can("user.update");
 
   // If `id` is provided in route and user is HR, we view/edit that specific employee
   const targetEmployeeId = id ? Number(id) : null;
@@ -108,7 +107,7 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState<EmployeeProfile | null>(null);
   const [employeeStatus, setEmployeeStatus] = useState<string>("ACTIVE");
-  const [profileCompleted, setProfileCompleted] = useState<boolean>(false);
+  const [, setProfileCompleted] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -362,15 +361,6 @@ export default function ProfilePage() {
   const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Employee";
   const initials = `${(profile.first_name?.[0] || "").toUpperCase()}${(profile.last_name?.[0] || "").toUpperCase()}` || "EM";
 
-  const fullAddress = [
-    profile.address_line1,
-    profile.address_line2,
-    profile.city,
-    profile.state,
-    profile.country ? `${profile.country} - ${profile.pincode || ""}` : profile.pincode,
-  ]
-    .filter(Boolean)
-    .join(", ");
 
   return (
     <AppLayout pageTitle={pageTitle}>

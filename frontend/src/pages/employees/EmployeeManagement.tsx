@@ -42,7 +42,7 @@ import { useNavigate } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import EmployeeProfileModal from "../../components/employees/EmployeeProfileModal";
 import api from "../../services/api";
-import { getRoleId } from "../../utils/auth";
+import { can } from "../../utils/permissions";
 import { getErrorMessage } from "../../utils/errors";
 import type { EmployeeDetail, EmployeeStats } from "../../types/employee";
 
@@ -54,9 +54,8 @@ const BORDER = "#DAD7CF";
 
 export default function EmployeeManagement() {
   const navigate = useNavigate();
-  const roleId = getRoleId();
-  const canCreate = roleId === 1 || roleId === 2;
-  const isHR = roleId === 1 || roleId === 2;
+  const canCreate = can("user.create");
+  const isHR = can("user.update");
 
   const [stats, setStats] = useState<EmployeeStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);

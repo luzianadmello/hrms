@@ -11,7 +11,11 @@ class Settings(BaseSettings):
 
     secret_key: str
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    # Short-lived access token + longer-lived refresh token (both HttpOnly cookies)
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+    access_cookie_name: str = "access_token"
+    refresh_cookie_name: str = "refresh_token"
 
     cors_origins: str = "http://localhost:5173"
 
@@ -39,6 +43,11 @@ class Settings(BaseSettings):
                 "SECRET_KEY must be a random string of at least 32 characters"
             )
         return self
+
+    @property
+    def cookie_secure(self) -> bool:
+        # Cookies are HTTPS-only everywhere except local development
+        return self.environment != "development"
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -3,12 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import EmployeeDirectory from "../../components/employees/EmployeeDirectory";
 import api from "../../services/api";
-import { getRoleId } from "../../utils/auth";
+import { canAny } from "../../utils/permissions";
 import type { EmployeeDetail } from "../../types/employee";
 
 export default function EmployeeDirectoryPage() {
-  const roleId = getRoleId();
-  const canManage = roleId === 1 || roleId === 2 || roleId === 4;
+  const canManage = canAny("employee.view_all", "employee.view_team");
 
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";

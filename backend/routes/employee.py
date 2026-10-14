@@ -31,12 +31,16 @@ from services.employee_service import (
 )
 from services.user_service import create_employee
 
-from utils.dependencies import get_current_user, require_permission
+from utils.dependencies import (
+    get_ready_user,
+    require_permission,
+    ensure_permission,
+)
 
 
 router = APIRouter(
     prefix="/employees",
-    tags=["Employees"]
+    tags=["Employees"],
 )
 
 
@@ -46,15 +50,15 @@ router = APIRouter(
 
 @router.get(
     "/stats",
-    response_model=EmployeeStatsResponse
+    response_model=EmployeeStatsResponse,
 )
 def employee_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ready_user),
 ):
     return get_employee_stats(
         db,
-        current_user
+        current_user,
     )
 
 
@@ -64,15 +68,15 @@ def employee_stats(
 
 @router.get(
     "/lookups",
-    response_model=EmployeeLookupsResponse
+    response_model=EmployeeLookupsResponse,
 )
 def employee_lookups(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("user.create")),
 ):
     return get_employee_lookups(
         db,
-        current_user
+        current_user,
     )
 
 
@@ -82,15 +86,15 @@ def employee_lookups(
 
 @router.get(
     "/me",
-    response_model=EmployeeProfileResponse
+    response_model=EmployeeProfileResponse,
 )
 def my_profile(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ready_user),
 ):
     return get_employee_profile(
         db,
-        current_user
+        current_user,
     )
 
 
@@ -100,17 +104,17 @@ def my_profile(
 
 @router.put(
     "/me",
-    response_model=EmployeeProfileResponse
+    response_model=EmployeeProfileResponse,
 )
 def update_my_profile(
     data: EmployeeProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ready_user),
 ):
     return update_employee_profile(
         db,
         current_user,
-        data
+        data,
     )
 
 
@@ -120,15 +124,15 @@ def update_my_profile(
 
 @router.get(
     "",
-    response_model=list[EmployeeDetailResponse]
+    response_model=list[EmployeeDetailResponse],
 )
 def get_all_employees(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ready_user),
 ):
     return list_employees(
         db,
-        current_user
+        current_user,
     )
 
 
@@ -138,17 +142,17 @@ def get_all_employees(
 
 @router.post(
     "",
-    response_model=CreateEmployeeResponse
+    response_model=CreateEmployeeResponse,
 )
 def create_new_employee(
     data: CreateEmployeeRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("user.create")),
 ):
     return create_employee(
         db,
         data,
-        current_user
+        current_user,
     )
 
 
@@ -158,17 +162,17 @@ def create_new_employee(
 
 @router.get(
     "/{employee_id}",
-    response_model=EmployeeDetailResponse
+    response_model=EmployeeDetailResponse,
 )
 def get_single_employee(
     employee_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ready_user),
 ):
     return get_employee_by_id(
         db,
         employee_id,
-        current_user
+        current_user,
     )
 
 
@@ -178,19 +182,28 @@ def get_single_employee(
 
 @router.patch(
     "/{employee_id}/status",
-    response_model=EmployeeDetailResponse
+    response_model=EmployeeDetailResponse,
 )
 def change_employee_status(
     employee_id: int,
     payload: EmployeeStatusUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_ready_user),
 ):
     target = payload.status.upper().strip()
-    required_perm = "user.activate" if target == "ACTIVE" else "user.deactivate"
-    permission_checker = require_permission(required_perm)
-    permission_checker(current_user=current_user, db=db)
-    return update_employee_status(db, employee_id, target, current_user)
+
+    ensure_permission(
+        db,
+        current_user,
+        "user.activate" if target == "ACTIVE" else "user.deactivate",
+    )
+
+    return update_employee_status(
+        db,
+        employee_id,
+        target,
+        current_user,
+    )
 
 
 # ============================================================
@@ -199,7 +212,7 @@ def change_employee_status(
 
 @router.put(
     "/{employee_id}",
-    response_model=EmployeeDetailResponse
+    response_model=EmployeeDetailResponse,
 )
 def update_single_employee(
     employee_id: int,
@@ -207,7 +220,12 @@ def update_single_employee(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user.update")),
 ):
-    return update_employee_by_id(db, employee_id, data, current_user)
+    return update_employee_by_id(
+        db,
+        employee_id,
+        data,
+        current_user,
+    )
 
 
 # ============================================================
@@ -216,11 +234,15 @@ def update_single_employee(
 
 @router.post(
     "/{employee_id}/reset-password",
-    response_model=PasswordResetResponse
+    response_model=PasswordResetResponse,
 )
 def reset_single_employee_password(
     employee_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user.reset_password")),
 ):
-    return reset_employee_password(db, employee_id, current_user)
+    return reset_employee_password(
+        db,
+        employee_id,
+        current_user,
+    )

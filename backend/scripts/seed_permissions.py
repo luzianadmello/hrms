@@ -65,6 +65,24 @@ permissions = [
         "action": "ASSIGN_ROLE",
         "description": "Allows assigning a role to a user",
     },
+        {
+        "permission_name": "employee.view_all",
+        "module": "Employee Management",
+        "action": "VIEW_ALL",
+        "description": "View every employee record",
+    },
+    {
+        "permission_name": "employee.view_team",
+        "module": "Employee Management",
+        "action": "VIEW_TEAM",
+        "description": "View employees who report to you",
+    },
+    {
+        "permission_name": "role.manage",
+        "module": "Administration",
+        "action": "MANAGE",
+        "description": "Manage roles, permissions and role-creation rules",
+    },
 ]
 
 

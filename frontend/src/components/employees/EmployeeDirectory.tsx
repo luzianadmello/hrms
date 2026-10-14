@@ -37,7 +37,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
-import { getRoleId } from "../../utils/auth";
+import { can } from "../../utils/permissions";
 import { getErrorMessage } from "../../utils/errors";
 import type { EmployeeDetail } from "../../types/employee";
 import EmployeeProfileModal from "./EmployeeProfileModal";
@@ -66,8 +66,7 @@ export default function EmployeeDirectory({
   onSearchChange: externalOnSearchChange,
 }: EmployeeDirectoryProps) {
   const navigate = useNavigate();
-  const roleId = getRoleId();
-  const isHR = roleId === 2 || roleId === 1;
+  const isHR = can("user.update");
 
   const [internalSearch, setInternalSearch] = useState("");
   const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearch;

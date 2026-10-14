@@ -1,3 +1,4 @@
+
 import secrets
 import string
 import uuid
@@ -12,15 +13,7 @@ from models.employee import Employee
 from models.user import User
 from schemas.user import CreateEmployeeRequest
 from utils.security import hash_password
-
-
-ROLE_ADMIN, ROLE_HR, ROLE_EMPLOYEE, ROLE_MANAGER = 1, 2, 3, 4
-
-# Who may create whom. Admin is never a target.
-CAN_CREATE = {
-    ROLE_ADMIN: {ROLE_HR, ROLE_EMPLOYEE, ROLE_MANAGER},
-    ROLE_HR: {ROLE_EMPLOYEE, ROLE_MANAGER},
-}
+from utils.rbac import creatable_role_ids
 
 
 def generate_temporary_password(length: int = 12) -> str:
@@ -34,10 +27,10 @@ def create_employee(
     current_user: User
 ):
     # 1. Role rule
-    if data.role_id not in CAN_CREATE.get(current_user.role_id, set()):
+    if data.role_id not in creatable_role_ids(db, current_user.role_id):
         raise HTTPException(
             status_code=403,
-            detail="You are not allowed to create this role"
+            detail="You are not allowed to create this role",
         )
 
     email = data.email.lower()
@@ -49,20 +42,20 @@ def create_employee(
     ):
         raise HTTPException(
             status_code=409,
-            detail="Email is already registered"
+            detail="Email is already registered",
         )
 
     # 3. Foreign key validation
     if not db.get(Department, data.department_id):
         raise HTTPException(
             status_code=400,
-            detail="Invalid department"
+            detail="Invalid department",
         )
 
     if not db.get(Designation, data.designation_id):
         raise HTTPException(
             status_code=400,
-            detail="Invalid designation"
+            detail="Invalid designation",
         )
 
     if data.manager_id is not None and not db.get(
@@ -71,7 +64,7 @@ def create_employee(
     ):
         raise HTTPException(
             status_code=400,
-            detail="Invalid manager"
+            detail="Invalid manager",
         )
 
     # Generate temporary password
@@ -121,7 +114,7 @@ def create_employee(
         db.rollback()
         raise HTTPException(
             status_code=409,
-            detail="Employee or email already exists"
+            detail="Employee or email already exists",
         )
 
     # 5. Return temporary password for development/testing

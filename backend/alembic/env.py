@@ -12,7 +12,8 @@ from models import (
     Designation,
     Address,
     Employee,
-    User
+    User,
+    RefreshToken
 )
 
 target_metadata = Base.metadata

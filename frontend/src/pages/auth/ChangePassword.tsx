@@ -18,7 +18,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
-import { setSession } from "../../utils/auth";
+import { setRoleId } from "../../utils/auth";
 import { logout } from "../../services/session";
 import { getErrorMessage } from "../../utils/errors";
 
@@ -28,6 +28,8 @@ const INK = "#16181D";
 const TEAL = "#16181D";
 const MUTED = "#6B6F76";
 const BORDER = "#DAD7CF";
+
+const MIN_LENGTH = 10;
 
 const fieldSx = {
   "& .MuiOutlinedInput-root": {
@@ -92,7 +94,7 @@ function ChangePassword() {
     navigate("/login", { replace: true });
   };
 
-  const passwordLongEnough = newPassword.length >= 8;
+  const passwordLongEnough = newPassword.length >= MIN_LENGTH;
 
   const passwordsMatch =
     newPassword.length > 0 &&
@@ -104,8 +106,8 @@ function ChangePassword() {
 
     setError("");
 
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    if (newPassword.length < MIN_LENGTH) {
+      setError(`Password must be at least ${MIN_LENGTH} characters long.`);
       return;
     }
 
@@ -122,9 +124,9 @@ function ChangePassword() {
         confirm_password: confirmPassword,
       });
 
-      // The old token is revoked by the server when the password changes,
-      // so keep the fresh one it just sent back.
-      setSession(response.data.access_token, response.data.role_id);
+      // The server has already replaced the login cookies with fresh ones.
+      // Only the role hint is kept in the browser.
+      setRoleId(response.data.role_id);
 
       // Everyone with an employee record completes their profile next.
       // (Accounts without one, like the Admin, are already marked complete.)
@@ -320,7 +322,7 @@ function ChangePassword() {
             <Typography
               sx={{ fontFamily: FONT, fontSize: "12px", color: MUTED }}
             >
-              At least 8 characters
+              At least {MIN_LENGTH} characters
             </Typography>
           </Box>
 

@@ -3,19 +3,14 @@ import {
   Avatar,
   Box,
   Button,
-  Chip,
   CircularProgress,
-  Divider,
   Typography,
 } from "@mui/material";
 import {
   AccessTimeOutlined,
   AddRounded,
-  ArrowForwardRounded,
-  BusinessOutlined,
   CorporateFareOutlined,
   EventAvailableOutlined,
-  LocationOnOutlined,
   PeopleOutlined,
   PersonOutlineRounded,
   VisibilityOutlined,
@@ -24,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppLayout from "../components/layout/AppLayout";
 import api from "../services/api";
-import { getRoleId } from "../utils/auth";
+import { can, isEmployeeView } from "../utils/permissions";
 import type { EmployeeDetail, EmployeeProfile, EmployeeStats } from "../types/employee";
 
 const FONT = "'Montserrat', sans-serif";
@@ -122,11 +117,7 @@ function StatCard({ icon, title, value, subtitle, onClick }: StatCardProps) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const roleId = getRoleId();
-
-  const isEmployee = roleId === 3;
-  const isHR = roleId === 2;
-  const isAdmin = roleId === 1;
+  const isEmployee = isEmployeeView();
 
   const [loading, setLoading] = useState(true);
 
@@ -206,15 +197,6 @@ export default function Dashboard() {
       ? `${myProfile.first_name[0]}${myProfile.last_name ? myProfile.last_name[0] : ""}`.toUpperCase()
       : "EM";
 
-    const fullAddress = [
-      myProfile?.address_line1,
-      myProfile?.address_line2,
-      myProfile?.city,
-      myProfile?.state,
-      myProfile?.country ? `${myProfile.country} - ${myProfile.pincode || ""}` : myProfile?.pincode,
-    ]
-      .filter(Boolean)
-      .join(", ");
 
     return (
       <AppLayout pageTitle="My Dashboard" showSearch={false}>
@@ -382,7 +364,7 @@ export default function Dashboard() {
             Employee Directory
           </Button>
 
-          {(isHR || isAdmin) && (
+          {can("user.create") && (
             <Button
               startIcon={<AddRounded />}
               onClick={() => navigate("/employees/create")}

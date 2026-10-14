@@ -6,3 +6,5 @@ from models.employee import Employee
 from models.user import User
 from models.permission import Permission
 from models.role_permission import RolePermission
+from models.refresh_token import RefreshToken
+from models.role_creation_rule import RoleCreationRule

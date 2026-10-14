@@ -22,7 +22,11 @@ import {
   PersonOutlineRounded,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getRoleId } from "../../utils/auth";
+import {
+  getRoleLabel,
+  isEmployeeView,
+  isTeamViewOnly,
+} from "../../utils/permissions";
 
 const FONT = "'Montserrat', sans-serif";
 const INK = "#16181D";
@@ -51,22 +55,10 @@ export default function DashboardSidebar({
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
   const location = useLocation();
-  const roleId = getRoleId();
+  const isEmployee = isEmployeeView();
+  const isManager = isTeamViewOnly();
 
-  const isEmployee = roleId === 3;
-  const isHR = roleId === 2;
-  const isAdmin = roleId === 1;
-  const isManager = roleId === 4;
-
-  const currentRoleLabel =
-    userRoleName ||
-    (isAdmin
-      ? "Administrator"
-      : isHR
-      ? "HR Manager"
-      : isManager
-      ? "Manager"
-      : "Employee");
+  const currentRoleLabel = userRoleName || getRoleLabel() || "Employee";
 
   const handleNavClick = (path: string) => {
     navigate(path);

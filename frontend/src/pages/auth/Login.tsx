@@ -19,7 +19,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
-import { setSession } from "../../utils/auth";
+import { setRoleId } from "../../utils/auth";
 import { getErrorMessage } from "../../utils/errors";
 
 const FONT = "'Montserrat', sans-serif";
@@ -103,15 +103,15 @@ function Login() {
       });
 
       const {
-        access_token,
         must_change_password,
         profile_completed,
         role_id,
       } = response.data;
 
-      // Token + role (role is only used for UI decisions; the server
-      // enforces permissions)
-      setSession(access_token, role_id);
+      // The login tokens are now in HttpOnly cookies set by the server.
+      // Only the role is kept here, for UI decisions (the server enforces
+      // permissions).
+      setRoleId(role_id);
 
       /*
        * LOGIN ROUTING

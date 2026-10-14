@@ -18,6 +18,8 @@ ROLE_PERMISSIONS = {
         "user.activate",
         "user.deactivate",
         "user.assign_role",
+        "employee.view_all",
+        "role.manage", 
     ],
 
     "HR": [
@@ -30,6 +32,7 @@ ROLE_PERMISSIONS = {
         "user.update",
         "user.activate",
         "user.deactivate",
+        "employee.view_all",
     ],
 
     "EMPLOYEE": [
@@ -42,6 +45,7 @@ ROLE_PERMISSIONS = {
         "user.login",
         "user.logout",
         "user.change_password",
+         "employee.view_team", 
     ],
 }
 

@@ -3,13 +3,8 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 
 import api from "../../services/api";
-import {
-  clearSession,
-  getToken,
-  getTokenExpiresInMs,
-  isLoggedIn,
-  setRoleId,
-} from "../../utils/auth";
+import { setRoleId } from "../../utils/auth";
+import { setPermissions } from "../../utils/permissions";
 
 /**
  * Which step of the account flow this page belongs to:
@@ -31,15 +26,13 @@ type Gate =
 interface ProtectedRouteProps {
   children: ReactNode;
   stage?: Stage;
-  allowedRoles?: number[];
+  requiredPermission?: string | string[];
 }
-
-const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 function ProtectedRoute({
   children,
   stage = "app",
-  allowedRoles,
+  requiredPermission,
 }: ProtectedRouteProps) {
   const { pathname } = useLocation();
 
@@ -50,13 +43,12 @@ function ProtectedRoute({
   );
   const [attempt, setAttempt] = useState(0);
 
-  const loggedIn = isLoggedIn();
   const checkKey = `${pathname}#${attempt}`;
 
   // Ask the server who this is and where they are in the onboarding flow.
+  // The login cookie is sent automatically. If it has expired, the API client
+  // silently refreshes it; if that fails too, we get a 401 and go to /login.
   useEffect(() => {
-    if (!loggedIn) return;
-
     let cancelled = false;
 
     const check = async () => {
@@ -67,6 +59,7 @@ function ProtectedRoute({
 
         // The server is the source of truth for the role, not localStorage.
         setRoleId(me.role_id);
+        setPermissions(me.permissions ?? [], me.role_name ?? "");
 
         let gate: Gate = "ok";
 
@@ -78,7 +71,12 @@ function ProtectedRoute({
           gate = stage === "profile" ? "ok" : "/complete-profile";
         } else if (stage === "profile") {
           gate = "/dashboard";
-        } else if (allowedRoles && !allowedRoles.includes(me.role_id)) {
+        } else if (
+          requiredPermission &&
+          ![requiredPermission]
+            .flat()
+            .some((p) => (me.permissions ?? []).includes(p))
+        ) {
           gate = "/dashboard";
         }
 
@@ -89,7 +87,6 @@ function ProtectedRoute({
         const status = (err as { response?: { status?: number } }).response
           ?.status;
 
-        // 401 -> the API client already cleared the session
         setResult({ key: checkKey, gate: status === 401 ? "login" : "error" });
       }
     };
@@ -99,28 +96,7 @@ function ProtectedRoute({
     return () => {
       cancelled = true;
     };
-  }, [loggedIn, checkKey, stage, allowedRoles]);
-
-  // Sign out automatically the moment the token expires.
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-
-    const remaining = getTokenExpiresInMs(token);
-    if (remaining === null) return;
-
-    const timer = window.setTimeout(() => {
-      clearSession();
-      window.location.assign("/login");
-    }, Math.min(Math.max(remaining, 0), MAX_TIMEOUT_MS));
-
-    return () => window.clearTimeout(timer);
-  }, [pathname]);
-
-  if (!loggedIn) {
-    clearSession();
-    return <Navigate to="/login" replace />;
-  }
+  }, [checkKey, stage, requiredPermission]);
 
   const gate: Gate | "checking" =
     result && result.key === checkKey ? result.gate : "checking";

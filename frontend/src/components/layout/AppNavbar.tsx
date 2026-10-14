@@ -21,7 +21,7 @@ import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
 import { logout } from "../../services/session";
-import { getRoleId } from "../../utils/auth";
+import { canAny, getRoleLabel, isEmployeeView } from "../../utils/permissions";
 
 const FONT = "'Montserrat', sans-serif";
 const INK = "#16181D";
@@ -45,9 +45,8 @@ export default function AppNavbar({
   showSearch,
 }: AppNavbarProps) {
   const navigate = useNavigate();
-  const roleId = getRoleId();
-  const isEmployee = roleId === 3;
-  const canSearchEmployees = roleId === 1 || roleId === 2 || roleId === 4;
+  const isEmployee = isEmployeeView();
+  const canSearchEmployees = canAny("employee.view_all", "employee.view_team");
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const openMenu = Boolean(anchorEl);
@@ -56,6 +55,7 @@ export default function AppNavbar({
   const [currentUser, setCurrentUser] = useState<{
     email: string;
     role_name?: string;
+    has_employee_profile?: boolean;
     first_name?: string;
     last_name?: string;
   } | null>(null);
@@ -70,23 +70,29 @@ export default function AppNavbar({
       try {
         const { data: me } = await api.get("/auth/me");
         if (cancelled) return;
+
+        const hasProfile = me.has_employee_profile === true;
+
         setCurrentUser({
           email: me.email,
-          role_name: me.role_name || (me.role_id === 1 ? "Admin" : me.role_id === 2 ? "HR" : me.role_id === 4 ? "Manager" : "Employee"),
+          role_name: getRoleLabel() || "Employee",
+          has_employee_profile: hasProfile,
         });
 
-        // Also fetch employee profile for name if available
-        try {
-          const { data: profile } = await api.get("/employees/me");
-          if (!cancelled) {
-            setCurrentUser((prev) => ({
-              ...prev!,
-              first_name: profile.first_name || "",
-              last_name: profile.last_name || "",
-            }));
+        // Accounts like the Admin have no employee record, so skip the call
+        if (hasProfile) {
+          try {
+            const { data: profile } = await api.get("/employees/me");
+            if (!cancelled) {
+              setCurrentUser((prev) => ({
+                ...prev!,
+                first_name: profile.first_name || "",
+                last_name: profile.last_name || "",
+              }));
+            }
+          } catch {
+            // Profile may be incomplete, email is sufficient
           }
-        } catch {
-          // Profile may be incomplete, email is sufficient
         }
       } catch {
         // Handled gracefully
@@ -392,23 +398,25 @@ export default function AppNavbar({
             <Divider sx={{ my: 0.8, borderColor: "#EBE8E1" }} />
 
             {/* View Profile */}
-            <MenuItem
-              onClick={handleNavigateProfile}
-              sx={{
-                borderRadius: "8px",
-                py: 1,
-                px: 1.5,
-                fontFamily: FONT,
-                fontSize: "13px",
-                fontWeight: 600,
-                color: INK,
-                gap: 1.5,
-                "&:hover": { backgroundColor: "#FAF9F6", color: TEAL },
-              }}
-            >
-              <PersonOutlineRounded sx={{ fontSize: 18 }} />
-              View Profile
-            </MenuItem>
+            {currentUser?.has_employee_profile && (
+              <MenuItem
+                onClick={handleNavigateProfile}
+                sx={{
+                  borderRadius: "8px",
+                  py: 1,
+                  px: 1.5,
+                  fontFamily: FONT,
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: INK,
+                  gap: 1.5,
+                  "&:hover": { backgroundColor: "#FAF9F6", color: TEAL },
+                }}
+              >
+                <PersonOutlineRounded sx={{ fontSize: 18 }} />
+                View Profile
+              </MenuItem>
+            )}
 
             {/* Logout */}
             <MenuItem
