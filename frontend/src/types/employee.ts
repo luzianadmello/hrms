@@ -19,6 +19,7 @@ export interface EmployeeDetail {
   manager_name: string | null;
   profile_completed: boolean;
   is_active: boolean;
+  last_login: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -30,8 +31,9 @@ export interface EmployeeDetail {
 export interface EmployeeStats {
   total_employees: number;
   active_employees: number;
-  onboarding_employees: number;
+  inactive_employees: number;
   total_departments: number;
+  profile_incomplete?: number;
 }
 
 export interface LookupItem {
@@ -70,5 +72,8 @@ export interface EmployeeProfile {
 export interface PasswordResetResponse {
   message: string;
   email_sent: boolean;
-  temporary_password?: string;
+}
+
+export interface StatusChangeResponse extends EmployeeDetail {
+  message?: string | null;
 }

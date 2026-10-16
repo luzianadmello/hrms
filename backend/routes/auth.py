@@ -24,6 +24,7 @@ from utils.dependencies import (
     get_current_user,
     get_db,
     get_role_name,
+    ensure_permission,
 )
 
 from utils.rbac import get_permission_names
@@ -40,11 +41,12 @@ def _send_tokens(response: Response, result: dict) -> dict:
     set_auth_cookies(
         response,
         result.pop("access_token"),
-        result.pop("refresh_token"),
+        result.pop("refresh_token", None),
     )
     return result
 
 
+#LOGIN
 @router.post("/login", response_model=LoginResponse)
 def login(
     user_data: LoginRequest,
@@ -60,6 +62,7 @@ def login(
     )
 
 
+#REFRESH TOKEN ENDPOINT
 @router.post("/refresh", response_model=LoginResponse)
 def refresh(
     response: Response,
@@ -75,6 +78,7 @@ def refresh(
     )
 
 
+#GET CURRENT USER PROFILE
 @router.get("/me")
 def get_me(
     db: Session = Depends(get_db),
@@ -86,12 +90,15 @@ def get_me(
         "role_id": current_user.role_id,
         "role_name": get_role_name(db, current_user),
         "must_change_password": current_user.must_change_password,
-        "profile_completed": current_user.profile_completed,
+        "profile_completed": (
+            current_user.profile_completed or current_user.employee_id is None
+        ),
         "has_employee_profile": current_user.employee_id is not None,
         "permissions": get_permission_names(db, current_user.role_id),
     }
 
 
+#CHANGE PASSWORD ENDPOINT
 @router.post("/change-password", response_model=ChangePasswordResponse)
 def change_user_password(
     password_data: ChangePasswordRequest,
@@ -99,12 +106,16 @@ def change_user_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Use get_current_user rather than get_ready_user so users who must change
+    # their temporary password can still access this endpoint.
+    ensure_permission(db, current_user, "user.change_password")
     return _send_tokens(
         response,
         change_password(db, current_user, password_data),
     )
 
 
+#LOGOUT ENDPOINT
 @router.post("/logout")
 def logout(
     response: Response,

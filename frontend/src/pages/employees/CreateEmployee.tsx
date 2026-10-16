@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
-  Alert,
   Box,
   Button,
   CircularProgress,
@@ -22,6 +21,8 @@ import { useNavigate } from "react-router-dom";
 import AppLayout from "../../components/layout/AppLayout";
 import api from "../../services/api";
 import { getErrorMessage } from "../../utils/errors";
+import type { StatusChangeResponse } from "../../types/employee";
+import ActionToast from "../../components/common/ActionToast";
 
 const FONT = "'Montserrat', sans-serif";
 const INK = "#16181D";
@@ -179,7 +180,13 @@ export default function CreateEmployee() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState("");
   const [success, setSuccess] = useState("");
-  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [created, setCreated] = useState<{
+    employee_id: number;
+    employee_code: string;
+    email: string;
+  } | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState("");
 
   const fetchLookups = useCallback(async () => {
     try {
@@ -228,11 +235,9 @@ export default function CreateEmployee() {
     if (!departmentId) errors.departmentId = "Department is required.";
     if (!designationId) errors.designationId = "Designation is required.";
 
-    // 4. Date of Joining: past or today allowed, future dates forbidden
+    // 4. Date of Joining: past, today or a future start date are all fine
     if (!dateOfJoining) {
       errors.dateOfJoining = "Date of joining is required.";
-    } else if (dateOfJoining > TODAY) {
-      errors.dateOfJoining = "Date of joining cannot be in the future.";
     }
 
     // 5. Date of Birth and Age: not in future, at least 18 years old
@@ -267,7 +272,8 @@ export default function CreateEmployee() {
 
     setGeneralError("");
     setSuccess("");
-    setTemporaryPassword("");
+    setCreated(null);
+    setInviteMessage("");
     setSaving(true);
 
     try {
@@ -285,10 +291,14 @@ export default function CreateEmployee() {
       });
 
       setSuccess(
-        `Employee ${response.data.employee_code} created successfully.`
+        `Employee ${response.data.employee_code} was created as Inactive. They cannot log in until you activate them.`
       );
 
-      setTemporaryPassword(response.data.temporary_password);
+      setCreated({
+        employee_id: response.data.employee_id,
+        employee_code: response.data.employee_code,
+        email: response.data.email,
+      });
 
       // Reset form
       setFirstName("");
@@ -308,6 +318,29 @@ export default function CreateEmployee() {
       setGeneralError(getErrorMessage(err, "Unable to create employee."));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleInviteNow = async () => {
+    if (!created) return;
+
+    setInviting(true);
+    setGeneralError("");
+
+    try {
+      await api.patch<StatusChangeResponse>(
+        `/employees/${created.employee_id}/status`,
+        { status: "ACTIVE" }
+      );
+
+      setInviteMessage(
+        `Employee activated successfully. Login details sent to ${created.email}.`
+      );
+      setCreated(null);
+    } catch (err: unknown) {
+      setGeneralError(getErrorMessage(err, "Unable to activate this employee."));
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -337,7 +370,7 @@ export default function CreateEmployee() {
             "&:hover": { backgroundColor: "rgba(22,24,29,0.06)", color: TEAL },
           }}
         >
-          Back to Employee Management
+          Back to Employees
         </Button>
 
         <Box sx={{ mb: 3 }}>
@@ -369,7 +402,7 @@ export default function CreateEmployee() {
           </Typography>
 
           <Typography sx={{ fontFamily: FONT, fontSize: "14px", color: MUTED, mt: 0.5 }}>
-            Create an employee account, assign their organization department and role, and generate temporary login credentials.
+            Create an employee account and assign their department and role. The account stays Inactive until you activate it; activating emails the login details.
           </Typography>
         </Box>
 
@@ -385,41 +418,68 @@ export default function CreateEmployee() {
             boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
           }}
         >
-          {generalError && (
-            <Alert severity="error" sx={{ mb: 3, borderRadius: "10px", fontFamily: FONT }}>
-              {generalError}
-            </Alert>
-          )}
+          <ActionToast
+            open={Boolean(generalError)}
+            severity="error"
+            message={generalError}
+            onClose={() => setGeneralError("")}
+          />
 
-          {success && (
-            <Alert severity="success" sx={{ mb: 3, borderRadius: "10px", fontFamily: FONT }}>
-              {success}
-            </Alert>
-          )}
+          <ActionToast
+            open={Boolean(success)}
+            severity="success"
+            message={success}
+            onClose={() => setSuccess("")}
+          />
 
-          {temporaryPassword && (
+          {created && (
             <Box
               sx={{
                 mb: 3,
                 p: 2.5,
                 borderRadius: "14px",
-                backgroundColor: "rgba(22,24,29,0.07)",
-                border: "1px solid rgba(22,24,29,0.2)",
+                backgroundColor: "rgba(59,130,246,0.07)",
+                border: "1px solid rgba(59,130,246,0.25)",
               }}
             >
-              <Typography sx={{ fontFamily: FONT, fontSize: "12px", fontWeight: 700, color: TEAL, textTransform: "uppercase", mb: 0.5 }}>
-                Temporary Login Password
+              <Typography sx={{ fontFamily: FONT, fontSize: "12px", fontWeight: 700, color: "#1D4ED8", textTransform: "uppercase", mb: 0.5 }}>
+                Created as Inactive
               </Typography>
 
-              <Typography sx={{ fontFamily: FONT, fontSize: "18px", fontWeight: 700, color: INK, letterSpacing: "0.5px" }}>
-                <code>{temporaryPassword}</code>
+              <Typography sx={{ fontFamily: FONT, fontSize: "14px", color: INK, lineHeight: 1.6 }}>
+                Activate {created.employee_code} now? We&apos;ll email login
+                details to <strong>{created.email}</strong>. You can also do
+                this later from the Employees page.
               </Typography>
 
-              <Typography sx={{ fontFamily: FONT, fontSize: "12px", color: MUTED, mt: 0.6 }}>
-                Share this temporary password securely with the employee. The employee will be required to change it on their first login.
-              </Typography>
+              <Box sx={{ display: "flex", gap: 1.5, mt: 2 }}>
+                <Button
+                  variant="contained"
+                  disableElevation
+                  disabled={inviting}
+                  onClick={handleInviteNow}
+                  sx={{ textTransform: "none", fontFamily: FONT, fontWeight: 600, borderRadius: "10px", px: 2.5, backgroundColor: INK, "&:hover": { backgroundColor: "#2B2F38" } }}
+                >
+                  {inviting ? <CircularProgress size={18} sx={{ color: "#FFFFFF" }} /> : "Activate now"}
+                </Button>
+
+                <Button
+                  disabled={inviting}
+                  onClick={() => setCreated(null)}
+                  sx={{ textTransform: "none", fontFamily: FONT, fontWeight: 600, color: MUTED }}
+                >
+                  Later
+                </Button>
+              </Box>
             </Box>
           )}
+
+          <ActionToast
+            open={Boolean(inviteMessage)}
+            severity="success"
+            message={inviteMessage}
+            onClose={() => setInviteMessage("")}
+          />
 
           {/* Basic information */}
           <Box sx={sectionHeaderSx}>
@@ -547,8 +607,7 @@ export default function CreateEmployee() {
                   if (formErrors.dateOfJoining) setFormErrors({ ...formErrors, dateOfJoining: "" });
                 }}
                 error={Boolean(formErrors.dateOfJoining)}
-                helperText={formErrors.dateOfJoining || "Past dates or today allowed (no future dates)"}
-                slotProps={{ htmlInput: { max: TODAY } }}
+                helperText={formErrors.dateOfJoining || "Any date, including a future start date"}
                 sx={fieldSx}
               />
             </Box>

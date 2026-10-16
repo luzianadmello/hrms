@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  MenuItem,
   TextField,
   Typography,
   createFilterOptions,
@@ -39,7 +40,9 @@ import AppLayout from "../../components/layout/AppLayout";
 import api from "../../services/api";
 import { can } from "../../utils/permissions";
 import { getErrorMessage } from "../../utils/errors";
-import type { EmployeeProfile } from "../../types/employee";
+import type { EmployeeLookups, EmployeeProfile } from "../../types/employee";
+import StatusChip from "../../components/employees/StatusChip";
+import ActionToast from "../../components/common/ActionToast";
 
 const FONT = "'Montserrat', sans-serif";
 const INK = "#16181D";
@@ -99,7 +102,7 @@ const labelSx = {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
-  const isHR = can("user.update");
+  const isHR = can("employee.update");
 
   // If `id` is provided in route and user is HR, we view/edit that specific employee
   const targetEmployeeId = id ? Number(id) : null;
@@ -119,11 +122,22 @@ export default function ProfilePage() {
   );
   const [phoneNumber, setPhoneNumber] = useState("");
 
+  // HR / Admin editing someone else: company fields + the choices for them
+  const canEditCompany = isHR && !isViewingSelf;
+  const canEditProfile = isViewingSelf || isHR;
+  const [lookups, setLookups] = useState<EmployeeLookups | null>(null);
+  const [company, setCompany] = useState({
+    department_id: "",
+    designation_id: "",
+    manager_id: "",
+    employment_type: "",
+    date_of_joining: "",
+  });
+
   // Feedback banner
   const [banner, setBanner] = useState<{
     severity: "success" | "error";
     message: string;
-    tempPassword?: string;
   } | null>(null);
 
   // Reset password dialog for HR
@@ -207,8 +221,39 @@ export default function ProfilePage() {
     }));
   };
 
-  const handleStartEdit = () => {
+  const handleStartEdit = async () => {
     if (!profile) return;
+
+    if (canEditCompany) {
+      const current = profile as unknown as {
+        department_id?: number | null;
+        designation_id?: number | null;
+        manager_id?: number | null;
+        employment_type?: string;
+        date_of_joining?: string;
+      };
+
+      setCompany({
+        department_id: current.department_id ? String(current.department_id) : "",
+        designation_id: current.designation_id ? String(current.designation_id) : "",
+        manager_id: current.manager_id ? String(current.manager_id) : "",
+        employment_type: current.employment_type || "",
+        date_of_joining: current.date_of_joining || "",
+      });
+
+      if (!lookups) {
+        try {
+          const { data } = await api.get<EmployeeLookups>("/employees/lookups");
+          setLookups(data);
+        } catch (err: unknown) {
+          setBanner({
+            severity: "error",
+            message: getErrorMessage(err, "Could not load the department and manager options."),
+          });
+        }
+      }
+    }
+
     setFormData(profile);
     const parsed = parsePhone(profile.phone);
     setPhoneCountry(parsed.country);
@@ -287,13 +332,25 @@ export default function ProfilePage() {
       pincode: formData.pincode?.trim() || null,
     };
 
+    // HR / Admin may also change the company details
+    const hrPayload = canEditCompany
+      ? {
+          ...payload,
+          department_id: company.department_id ? Number(company.department_id) : undefined,
+          designation_id: company.designation_id ? Number(company.designation_id) : undefined,
+          manager_id: company.manager_id ? Number(company.manager_id) : null,
+          employment_type: company.employment_type || undefined,
+          date_of_joining: company.date_of_joining || undefined,
+        }
+      : payload;
+
     try {
       if (isViewingSelf) {
         const { data } = await api.put<EmployeeProfile>("/employees/me", payload);
         setProfile(data);
         setFormData(data);
       } else {
-        const { data } = await api.put(`/employees/${targetEmployeeId}`, payload);
+        const { data } = await api.put(`/employees/${targetEmployeeId}`, hrPayload);
         setProfile(data);
         setFormData(data);
       }
@@ -322,8 +379,7 @@ export default function ProfilePage() {
       const { data } = await api.post(`/employees/${targetEmployeeId}/reset-password`);
       setBanner({
         severity: "success",
-        message: data.message || "Password reset successfully.",
-        tempPassword: data.temporary_password,
+        message: data.message || "Password reset successfully. Login details sent to the employee.",
       });
       setResetDialogOpen(false);
     } catch (err: unknown) {
@@ -379,39 +435,16 @@ export default function ProfilePage() {
             "&:hover": { backgroundColor: "rgba(22,24,29,0.06)", color: TEAL },
           }}
         >
-          Back to Employee Management
+          Back to Employees
         </Button>
       )}
 
-      {/* Banner Message */}
-      {banner && (
-        <Alert
-          severity={banner.severity}
-          onClose={() => setBanner(null)}
-          sx={{
-            mb: 3,
-            borderRadius: "12px",
-            fontFamily: FONT,
-            fontSize: "13px",
-            border: `1px solid ${
-              banner.severity === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"
-            }`,
-          }}
-        >
-          <Box>
-            <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: 600 }}>
-              {banner.message}
-            </Typography>
-            {banner.tempPassword && (
-              <Box sx={{ mt: 1, p: 1, backgroundColor: "rgba(0,0,0,0.04)", borderRadius: "6px" }}>
-                <Typography sx={{ fontFamily: FONT, fontSize: "12px", fontWeight: 700, color: INK }}>
-                  Temporary Password (Dev mode): <code>{banner.tempPassword}</code>
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </Alert>
-      )}
+      <ActionToast
+        open={Boolean(banner)}
+        severity={banner?.severity ?? "info"}
+        message={banner?.message ?? ""}
+        onClose={() => setBanner(null)}
+      />
 
       {/* Header Profile Badge Card */}
       <Box
@@ -472,23 +505,7 @@ export default function ProfilePage() {
                 }}
               />
 
-              {!isViewingSelf && (
-                <Chip
-                  label={employeeStatus}
-                  size="small"
-                  sx={{
-                    fontFamily: FONT,
-                    fontWeight: 700,
-                    fontSize: "11px",
-                    backgroundColor:
-                      employeeStatus === "ACTIVE"
-                        ? "rgba(16, 185, 129, 0.12)"
-                        : "rgba(239, 68, 68, 0.12)",
-                    color: employeeStatus === "ACTIVE" ? "#059669" : "#DC2626",
-                    borderRadius: "6px",
-                  }}
-                />
-              )}
+              {!isViewingSelf && <StatusChip status={employeeStatus} />}
             </Box>
 
             <Typography sx={{ fontFamily: FONT, fontSize: "14px", color: MUTED }}>
@@ -500,7 +517,7 @@ export default function ProfilePage() {
 
         {/* Top Actions: Edit / Password Reset */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
-          {!isEditing && (
+          {!isEditing && canEditProfile && (
             <Button
               variant="contained"
               startIcon={<EditOutlined />}
@@ -829,7 +846,7 @@ export default function ProfilePage() {
               </Typography>
             </Box>
             <Chip
-              label="Company Controlled (Read-only)"
+              label={canEditCompany && isEditing ? "Editable by HR" : "Company Controlled (Read-only)"}
               size="small"
               sx={{
                 fontFamily: FONT,
@@ -865,37 +882,114 @@ export default function ProfilePage() {
 
             <Box>
               <Typography sx={labelSx}>Department</Typography>
-              <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
-                {profile.department_name || "—"}
-              </Typography>
+              {canEditCompany && isEditing ? (
+                <TextField
+                  select
+                  fullWidth
+                  value={company.department_id}
+                  onChange={(e) => setCompany({ ...company, department_id: e.target.value })}
+                  sx={fieldSx}
+                >
+                  {(lookups?.departments ?? []).map((item) => (
+                    <MenuItem key={item.id} value={String(item.id)} sx={{ fontFamily: FONT, fontSize: "13px" }}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
+                  {profile.department_name || "—"}
+                </Typography>
+              )}
             </Box>
 
             <Box>
               <Typography sx={labelSx}>Designation</Typography>
-              <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
-                {profile.designation_name || "—"}
-              </Typography>
+              {canEditCompany && isEditing ? (
+                <TextField
+                  select
+                  fullWidth
+                  value={company.designation_id}
+                  onChange={(e) => setCompany({ ...company, designation_id: e.target.value })}
+                  sx={fieldSx}
+                >
+                  {(lookups?.designations ?? []).map((item) => (
+                    <MenuItem key={item.id} value={String(item.id)} sx={{ fontFamily: FONT, fontSize: "13px" }}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
+                  {profile.designation_name || "—"}
+                </Typography>
+              )}
             </Box>
 
             <Box>
               <Typography sx={labelSx}>Reporting Manager</Typography>
-              <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
-                {profile.manager_name || "None"}
-              </Typography>
+              {canEditCompany && isEditing ? (
+                <TextField
+                  select
+                  fullWidth
+                  value={company.manager_id}
+                  onChange={(e) => setCompany({ ...company, manager_id: e.target.value })}
+                  sx={fieldSx}
+                >
+                  <MenuItem value="" sx={{ fontFamily: FONT, fontSize: "13px" }}>
+                    None
+                  </MenuItem>
+                  {(lookups?.managers ?? []).map((item) => (
+                    <MenuItem key={item.id} value={String(item.id)} sx={{ fontFamily: FONT, fontSize: "13px" }}>
+                      {item.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
+                  {profile.manager_name || "None"}
+                </Typography>
+              )}
             </Box>
 
             <Box>
               <Typography sx={labelSx}>Date of Joining</Typography>
-              <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
-                {profile.date_of_joining}
-              </Typography>
+              {canEditCompany && isEditing ? (
+                <TextField
+                  fullWidth
+                  type="date"
+                  value={company.date_of_joining}
+                  onChange={(e) => setCompany({ ...company, date_of_joining: e.target.value })}
+                  sx={fieldSx}
+                />
+              ) : (
+                <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
+                  {profile.date_of_joining}
+                </Typography>
+              )}
             </Box>
 
             <Box>
               <Typography sx={labelSx}>Employment Type</Typography>
-              <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
-                {profile.employment_type?.replace(/_/g, " ")}
-              </Typography>
+              {canEditCompany && isEditing ? (
+                <TextField
+                  select
+                  fullWidth
+                  value={company.employment_type}
+                  onChange={(e) => setCompany({ ...company, employment_type: e.target.value })}
+                  sx={fieldSx}
+                >
+                  {["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN"].map((type) => (
+                    <MenuItem key={type} value={type} sx={{ fontFamily: FONT, fontSize: "13px" }}>
+                      {type.replace(/_/g, " ")}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK }}>
+                  {profile.employment_type?.replace(/_/g, " ")}
+                </Typography>
+              )}
             </Box>
           </Box>
         </Box>

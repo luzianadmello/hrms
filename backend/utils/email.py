@@ -1,31 +1,24 @@
-import smtplib
-from email.message import EmailMessage
+"""Development email transport.
 
-from config import settings
+SMTP is intentionally not wired up yet. For now, print a complete email to the
+backend terminal and return success so activation/reset flows can be tested.
+Replace this function with the real email provider integration when ready.
+"""
+from __future__ import annotations
 
 
-def send_email(to: str, subject: str, body: str) -> bool:
-    # No SMTP configured: print to the console (development only)
-    if not settings.smtp_host:
-        if settings.environment == "development":
-            print(f"\n[DEV EMAIL] to={to}\nsubject={subject}\n{body}\n")
-            return True
-        print("[EMAIL NOT SENT] SMTP is not configured")
-        return False
-
-    msg = EmailMessage()
-    msg["From"] = settings.smtp_from or settings.smtp_user
-    msg["To"] = to
-    msg["Subject"] = subject
-    msg.set_content(body)
-
-    try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
-            server.starttls()
-            if settings.smtp_user:
-                server.login(settings.smtp_user, settings.smtp_password)
-            server.send_message(msg)
-        return True
-    except Exception as e:
-        print(f"[EMAIL FAILED] {e}")
-        return False
+def send_email(*, to: str, subject: str, body: str) -> bool:
+    separator = "=" * 72
+    print(
+        f"\\n{separator}\\n"
+        "HRMS OUTGOING EMAIL (DEVELOPMENT MODE)\\n"
+        f"{separator}\\n"
+        f"To: {to}\\n"
+        f"Subject: {subject}\\n"
+        "Content-Type: text/plain; charset=UTF-8\\n"
+        f"{'-' * 72}\\n"
+        f"{body}\\n"
+        f"{separator}\\n",
+        flush=True,
+    )
+    return True

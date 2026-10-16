@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -21,6 +20,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
+  TableSortLabel,
   TextField,
   Tooltip,
   Typography,
@@ -41,6 +42,8 @@ import { can } from "../../utils/permissions";
 import { getErrorMessage } from "../../utils/errors";
 import type { EmployeeDetail } from "../../types/employee";
 import EmployeeProfileModal from "./EmployeeProfileModal";
+import StatusChip from "./StatusChip";
+import ActionToast from "../common/ActionToast";
 
 const FONT = "'Montserrat', sans-serif";
 const INK = "#16181D";
@@ -66,7 +69,8 @@ export default function EmployeeDirectory({
   onSearchChange: externalOnSearchChange,
 }: EmployeeDirectoryProps) {
   const navigate = useNavigate();
-  const isHR = can("user.update");
+  const isHR = can("employee.update");
+  const canCreateEmployee = can("user.create");
 
   const [internalSearch, setInternalSearch] = useState("");
   const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearch;
@@ -81,6 +85,10 @@ export default function EmployeeDirectory({
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [activeEmployee, setActiveEmployee] = useState<EmployeeDetail | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<"employee_code" | "date_of_joining">("employee_code");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // Status Change Dialog State
   const [statusDialogTarget, setStatusDialogTarget] = useState<EmployeeDetail | null>(null);
@@ -95,7 +103,6 @@ export default function EmployeeDirectory({
   const [banner, setBanner] = useState<{
     severity: "success" | "error" | "info";
     message: string;
-    tempPassword?: string;
   } | null>(null);
 
   // Departments list for filtering
@@ -126,6 +133,24 @@ export default function EmployeeDirectory({
     });
   }, [employees, searchQuery, selectedDept, selectedStatus]);
 
+  const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+    const comparison = sortBy === "employee_code"
+      ? (a.employee_code || "").localeCompare(b.employee_code || "", undefined, { numeric: true })
+      : (a.date_of_joining || "").localeCompare(b.date_of_joining || "");
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+  const paginatedEmployees = sortedEmployees.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleSort = (column: "employee_code" | "date_of_joining") => {
+    if (sortBy === column) {
+      setSortDirection((direction) => direction === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortDirection("asc");
+    }
+    setPage(0);
+  };
+
   // Handle status toggle initiation
   const handleInitiateStatusChange = (emp: EmployeeDetail, targetStatus: "ACTIVE" | "INACTIVE") => {
     setStatusDialogTarget(emp);
@@ -146,9 +171,9 @@ export default function EmployeeDirectory({
 
       setBanner({
         severity: "success",
-        message: `Employee ${statusDialogTarget.employee_code} account has been ${
-          pendingNewStatus === "ACTIVE" ? "reactivated successfully" : "deactivated. HRMS account access is revoked immediately."
-        }`,
+        message: pendingNewStatus === "ACTIVE"
+          ? `Employee activated successfully. Login details sent to ${statusDialogTarget.email}.`
+          : "Employee deactivated successfully. All active sessions have been revoked.",
       });
 
       setStatusDialogTarget(null);
@@ -175,8 +200,7 @@ export default function EmployeeDirectory({
 
       setBanner({
         severity: "success",
-        message: data.message || `Password reset successfully for ${resetDialogTarget.email}.`,
-        tempPassword: data.temporary_password,
+        message: data.message || `Password reset successfully. Login details sent to ${resetDialogTarget.email}.`,
       });
 
       setResetDialogTarget(null);
@@ -192,37 +216,12 @@ export default function EmployeeDirectory({
 
   return (
     <Box>
-      {/* Feedback Banner */}
-      {banner && (
-        <Alert
-          severity={banner.severity}
-          onClose={() => setBanner(null)}
-          sx={{
-            mb: 3,
-            borderRadius: "12px",
-            fontFamily: FONT,
-            fontSize: "13px",
-            border: `1px solid ${
-              banner.severity === "success"
-                ? "rgba(16, 185, 129, 0.3)"
-                : "rgba(239, 68, 68, 0.3)"
-            }`,
-          }}
-        >
-          <Box>
-            <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: 600 }}>
-              {banner.message}
-            </Typography>
-            {banner.tempPassword && (
-              <Box sx={{ mt: 1, p: 1, backgroundColor: "rgba(0,0,0,0.04)", borderRadius: "6px" }}>
-                <Typography sx={{ fontFamily: FONT, fontSize: "12px", fontWeight: 700, color: INK }}>
-                  Temporary Password (Dev mode): <code>{banner.tempPassword}</code>
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </Alert>
-      )}
+      <ActionToast
+        open={Boolean(banner)}
+        severity={banner?.severity ?? "info"}
+        message={banner?.message ?? ""}
+        onClose={() => setBanner(null)}
+      />
 
       {/* Top action & filter bar */}
       <Box
@@ -245,7 +244,7 @@ export default function EmployeeDirectory({
             placeholder="Search by name, code or email…"
             size="small"
             value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => { handleSearchChange(e.target.value); setPage(0); }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -285,7 +284,7 @@ export default function EmployeeDirectory({
           >
             <Select
               value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
+              onChange={(e) => { setSelectedDept(e.target.value); setPage(0); }}
               displayEmpty
             >
               <MenuItem value="ALL" sx={{ fontFamily: FONT, fontSize: "13px" }}>
@@ -315,7 +314,7 @@ export default function EmployeeDirectory({
           >
             <Select
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => { setSelectedStatus(e.target.value); setPage(0); }}
               displayEmpty
             >
               <MenuItem value="ALL" sx={{ fontFamily: FONT, fontSize: "13px" }}>
@@ -326,9 +325,6 @@ export default function EmployeeDirectory({
               </MenuItem>
               <MenuItem value="INACTIVE" sx={{ fontFamily: FONT, fontSize: "13px" }}>
                 Inactive
-              </MenuItem>
-              <MenuItem value="ONBOARDING" sx={{ fontFamily: FONT, fontSize: "13px" }}>
-                Onboarding
               </MenuItem>
             </Select>
           </FormControl>
@@ -351,7 +347,7 @@ export default function EmployeeDirectory({
             </IconButton>
           </Tooltip>
 
-          {canManage && (
+          {canManage && canCreateEmployee && (
             <Button
               startIcon={<AddRounded />}
               onClick={() => navigate("/employees/create")}
@@ -389,14 +385,14 @@ export default function EmployeeDirectory({
               <TableCell sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
                 EMPLOYEE
               </TableCell>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
-                CODE
+              <TableCell sortDirection={sortBy === "employee_code" ? sortDirection : false} sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
+                <TableSortLabel active={sortBy === "employee_code"} direction={sortBy === "employee_code" ? sortDirection : "asc"} onClick={() => handleSort("employee_code")} IconComponent={ArrowDropDownRounded} sx={{ flexDirection: "column", alignItems: "flex-start", "& .MuiTableSortLabel-icon": { margin: 0, transform: (sortBy === "employee_code" ? sortDirection : "asc") === "asc" ? "rotate(0deg) !important" : "rotate(180deg) !important" } }}>CODE</TableSortLabel>
               </TableCell>
               <TableCell sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
                 DEPARTMENT & ROLE
               </TableCell>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
-                JOINING DATE
+              <TableCell sortDirection={sortBy === "date_of_joining" ? sortDirection : false} sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
+                <TableSortLabel active={sortBy === "date_of_joining"} direction={sortBy === "date_of_joining" ? sortDirection : "asc"} onClick={() => handleSort("date_of_joining")} IconComponent={ArrowDropDownRounded} sx={{ flexDirection: "column", alignItems: "flex-start", "& .MuiTableSortLabel-icon": { margin: 0, transform: (sortBy === "date_of_joining" ? sortDirection : "asc") === "asc" ? "rotate(0deg) !important" : "rotate(180deg) !important" } }}>JOINING DATE</TableSortLabel>
               </TableCell>
               <TableCell sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
                 STATUS
@@ -435,7 +431,7 @@ export default function EmployeeDirectory({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEmployees.map((emp) => {
+              paginatedEmployees.map((emp) => {
                 const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Employee";
                 const initials = `${(emp.first_name?.[0] || "").toUpperCase()}${(emp.last_name?.[0] || "").toUpperCase()}` || "EM";
                 const isActive = emp.is_active && emp.status === "ACTIVE";
@@ -587,21 +583,7 @@ export default function EmployeeDirectory({
                           />
                         </Tooltip>
                       ) : (
-                        <Chip
-                          label={emp.status}
-                          size="small"
-                          sx={{
-                            fontFamily: FONT,
-                            fontWeight: 700,
-                            fontSize: "11px",
-                            backgroundColor:
-                              emp.status === "ACTIVE"
-                                ? "rgba(16, 185, 129, 0.12)"
-                                : "rgba(245, 158, 11, 0.12)",
-                            color: emp.status === "ACTIVE" ? "#059669" : "#D97706",
-                            borderRadius: "6px",
-                          }}
-                        />
+                        <StatusChip status={emp.status} />
                       )}
                     </TableCell>
 
@@ -718,7 +700,7 @@ export default function EmployeeDirectory({
             )}
           </Box>
           <Typography sx={{ fontFamily: FONT, fontSize: "18px", fontWeight: 700, color: INK }}>
-            {pendingNewStatus === "INACTIVE" ? "Deactivate Account?" : "Reactivate Account?"}
+            {pendingNewStatus === "INACTIVE" ? "Deactivate Account?" : "Activate Account?"}
           </Typography>
         </DialogTitle>
 
@@ -739,15 +721,13 @@ export default function EmployeeDirectory({
               </>
             ) : (
               <>
-                Are you sure you want to reactivate account access for{" "}
-                <strong style={{ color: INK }}>
+                Activate <strong style={{ color: INK }}>
                   {statusDialogTarget?.first_name} {statusDialogTarget?.last_name}
                 </strong>{" "}
-                ({statusDialogTarget?.employee_code})?
-                <br />
-                <br />
-                Their status will return to <strong>ACTIVE</strong> and they will be permitted to log in
-                again using their credentials.
+                ({statusDialogTarget?.employee_code})? A new temporary password will be generated and
+                sent to <strong>{statusDialogTarget?.email}</strong>. For now, the formal email will be
+                printed in the backend terminal. The employee will be asked to change their password
+                and complete their profile after logging in.
               </>
             )}
           </Typography>
@@ -788,7 +768,7 @@ export default function EmployeeDirectory({
             ) : pendingNewStatus === "INACTIVE" ? (
               "Yes, Deactivate Account"
             ) : (
-              "Yes, Reactivate Account"
+              "Yes, Activate Account"
             )}
           </Button>
         </DialogActions>
@@ -880,10 +860,22 @@ export default function EmployeeDirectory({
         </DialogActions>
       </Dialog>
 
+      <TablePagination
+        component="div"
+        count={filteredEmployees.length}
+        page={Math.min(page, Math.max(0, Math.ceil(filteredEmployees.length / rowsPerPage) - 1))}
+        onPageChange={(_, nextPage) => setPage(nextPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(event) => { setRowsPerPage(Number(event.target.value)); setPage(0); }}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        sx={{ fontFamily: FONT, borderBottom: `1px solid ${BORDER}` }}
+      />
+
       {/* Profile Details Dialog with Edit Profile support */}
       <EmployeeProfileModal
         open={Boolean(activeEmployee)}
         employee={activeEmployee}
+        canEdit={can("employee.update")}
         onClose={() => setActiveEmployee(null)}
         onSaved={onRefresh}
       />

@@ -38,13 +38,6 @@ class CreateEmployeeRequest(BaseModel):
             raise ValueError("Email cannot be empty")
         return val
 
-    @field_validator("date_of_joining")
-    @classmethod
-    def validate_date_of_joining(cls, value: date):
-        if value > date.today():
-            raise ValueError("Date of joining cannot be in the future")
-        return value
-
     @field_validator("dob")
     @classmethod
     def validate_dob(cls, value: date | None):
@@ -70,4 +63,4 @@ class CreateEmployeeResponse(BaseModel):
     user_id: int
     role_id: int
     email: EmailStr
-    temporary_password: str
+    status: str

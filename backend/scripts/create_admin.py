@@ -39,8 +39,8 @@ def create_admin():
             print("Passwords do not match.")
             return
 
-        if len(password) < 8:
-            print("Password must be at least 8 characters long.")
+        if len(password) < 10:
+            print("Password must be at least 10 characters long.")
             return
 
         existing_user = db.query(User).filter(

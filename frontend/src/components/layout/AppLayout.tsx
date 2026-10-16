@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 import AppNavbar from "./AppNavbar";
-import DashboardSidebar, { SIDEBAR_WIDTH } from "./DashboardSidebar";
+import DashboardSidebar, { SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_WIDTH } from "./DashboardSidebar";
 import { logout } from "../../services/session";
 
 const FONT = "'Montserrat', sans-serif";
@@ -25,6 +25,7 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -78,19 +79,22 @@ export default function AppLayout({
         onMobileClose={() => setMobileOpen(false)}
         onLogout={handleLogout}
         loggingOut={loggingOut}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
       />
 
       {/* Main Wrapper */}
       <Box
         sx={{
           flexGrow: 1,
-          ml: { xs: 0, md: `${SIDEBAR_WIDTH}px` },
-          width: { xs: "100%", md: `calc(100% - ${SIDEBAR_WIDTH}px)` },
+          ml: { xs: 0, md: `${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH}px` },
+          width: { xs: "100%", md: `calc(100% - ${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH}px)` },
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
           position: "relative",
           zIndex: 1,
+          transition: "margin-left 0.18s ease, width 0.18s ease",
         }}
       >
         {/* Shared Top Navbar */}

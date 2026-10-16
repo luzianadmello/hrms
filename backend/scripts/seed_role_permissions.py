@@ -19,6 +19,9 @@ ROLE_PERMISSIONS = {
         "user.deactivate",
         "user.assign_role",
         "employee.view_all",
+        "employee.update",
+        "employee.view_stats",
+        "employee.update_hr",
         "role.manage", 
     ],
 
@@ -33,6 +36,9 @@ ROLE_PERMISSIONS = {
         "user.activate",
         "user.deactivate",
         "employee.view_all",
+        "employee.update",
+        "employee.view_stats",
+        "employee.update_hr",
     ],
 
     "EMPLOYEE": [
@@ -45,7 +51,7 @@ ROLE_PERMISSIONS = {
         "user.login",
         "user.logout",
         "user.change_password",
-         "employee.view_team", 
+        "employee.view_team",
     ],
 }
 
@@ -101,6 +107,19 @@ def seed_role_permissions():
                 )
 
                 db.add(mapping)
+
+        # Clean up the deferred manager-statistics permission if an earlier
+        # seed run created it. The feature will be reintroduced when analytics ships.
+        deferred_permission = (
+            db.query(Permission)
+            .filter(Permission.permission_name == "employee.view_team_stats")
+            .first()
+        )
+        if deferred_permission:
+            db.query(RolePermission).filter(
+                RolePermission.permission_id == deferred_permission.permission_id
+            ).delete(synchronize_session=False)
+            db.delete(deferred_permission)
 
         db.commit()
 

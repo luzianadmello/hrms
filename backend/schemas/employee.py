@@ -1,7 +1,9 @@
 import re
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+from schemas.user import EmploymentType
 
 # "+<dial code> <digits>", e.g. "+91 9876543210"
 PHONE_PATTERN = re.compile(r"^\+\d{1,5} \d{4,15}$")
@@ -74,14 +76,36 @@ class EmployeeProfileUpdate(BaseModel):
         return value
 
 
+class EmployeeHRUpdate(EmployeeProfileUpdate):
+    """What HR / Admin may change on someone else's record.
+
+    Everything in EmployeeProfileUpdate, plus the company fields. Unknown
+    fields are rejected (422) instead of being silently ignored.
+    Not editable here: employee id/code, work email, status, role,
+    profile_completed, last login (system-generated or changed by actions).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    department_id: int | None = None
+    designation_id: int | None = None
+    manager_id: int | None = None
+    employment_type: str | None = None
+    date_of_joining: date | None = None
+
+    @field_validator("employment_type")
+    @classmethod
+    def validate_employment_type(cls, value: str | None):
+        if value is None:
+            return None
+        allowed = [member.value for member in EmploymentType]
+        if value not in allowed:
+            raise ValueError("Employment type must be one of: " + ", ".join(allowed))
+        return value
+
+
 class EmployeeStatusUpdateRequest(BaseModel):
     status: str
-
-
-class PasswordResetResponse(BaseModel):
-    message: str
-    email_sent: bool
-    temporary_password: str | None = None
 
 
 class EmployeeProfileResponse(BaseModel):
@@ -148,6 +172,7 @@ class EmployeeDetailResponse(BaseModel):
     manager_name: str | None = None
     profile_completed: bool = False
     is_active: bool = True
+    last_login: datetime | None = None
 
     address_line1: str | None = None
     address_line2: str | None = None
@@ -157,8 +182,19 @@ class EmployeeDetailResponse(BaseModel):
     pincode: str | None = None
 
 
+class StatusChangeResponse(EmployeeDetailResponse):
+    # Confirms the action without exposing credentials or email contents.
+    message: str | None = None
+
+
 class EmployeeStatsResponse(BaseModel):
     total_employees: int
     active_employees: int
-    onboarding_employees: int
-    total_departments: int
+    inactive_employees: int
+    total_departments: int
+    profile_incomplete: int = 0
+
+
+class PasswordResetResponse(BaseModel):
+    message: str
+    email_sent: bool

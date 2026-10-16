@@ -17,11 +17,11 @@ import {
   PersonOutlineRounded,
   SearchRounded,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
 import { logout } from "../../services/session";
-import { canAny, getRoleLabel, isEmployeeView } from "../../utils/permissions";
+import { canAny, getRoleLabel } from "../../utils/permissions";
 
 const FONT = "'Montserrat', sans-serif";
 const INK = "#16181D";
@@ -45,7 +45,8 @@ export default function AppNavbar({
   showSearch,
 }: AppNavbarProps) {
   const navigate = useNavigate();
-  const isEmployee = isEmployeeView();
+  const location = useLocation();
+  const hideDashboardTitle = location.pathname === "/dashboard";
   const canSearchEmployees = canAny("employee.view_all", "employee.view_team");
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -128,7 +129,7 @@ export default function AppNavbar({
       if (onSearchChange) {
         onSearchChange(localSearch);
       } else if (canSearchEmployees) {
-        navigate(`/employees/directory?q=${encodeURIComponent(localSearch.trim())}`);
+        navigate(`/employees?q=${encodeURIComponent(localSearch.trim())}`);
       }
     }
   };
@@ -225,8 +226,8 @@ export default function AppNavbar({
             </Typography>
           </Box>
 
-          {/* Dynamic Page Title */}
-          <Typography
+          {/* Keep dashboard title in the page content to avoid duplication. */}
+          {!hideDashboardTitle && <Typography
             component="h1"
             sx={{
               fontFamily: FONT,
@@ -237,7 +238,7 @@ export default function AppNavbar({
             }}
           >
             {pageTitle}
-          </Typography>
+          </Typography>}
         </Box>
       </Box>
 
@@ -276,30 +277,6 @@ export default function AppNavbar({
                   },
                 }}
               />
-            ) : isEmployee ? (
-              <Tooltip title="Employee role has access to self-service items only">
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    px: 1.5,
-                    height: 40,
-                    borderRadius: "10px",
-                    border: `1px solid ${BORDER}`,
-                    backgroundColor: "#FAF9F6",
-                    color: MUTED,
-                    fontFamily: FONT,
-                    fontSize: "12px",
-                    cursor: "not-allowed",
-                  }}
-                >
-                  <SearchRounded sx={{ fontSize: 18, color: MUTED }} />
-                  <Typography sx={{ fontFamily: FONT, fontSize: "12px", color: MUTED }}>
-                    Self-Service Portal
-                  </Typography>
-                </Box>
-              </Tooltip>
             ) : null}
           </Box>
         )}

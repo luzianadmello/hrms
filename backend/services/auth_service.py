@@ -16,8 +16,16 @@ from utils.security import (
     hash_refresh_token,
 )
 
+# How long the previous refresh token is still accepted after a rotation
+ROTATION_GRACE_SECONDS = 30
+
 # Checked when the email doesn't exist, so response time doesn't reveal it
 _DUMMY_HASH = hash_password("dummy-password-for-timing-only")
+
+
+def _profile_done(user: User) -> bool:
+    # Accounts with no employee record (the Admin) have no profile to fill in
+    return bool(user.profile_completed) or user.employee_id is None
 
 
 def _access_token_for(user: User, session_id: int) -> str:
@@ -78,7 +86,10 @@ def login_user(db: Session, user_data: LoginRequest, client_ip: str = "unknown")
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="User account is inactive")
+        raise HTTPException(
+            status_code=403,
+            detail="Your account isn't active yet. Please contact HR.",
+        )
 
     clear(key)
 
@@ -93,7 +104,7 @@ def login_user(db: Session, user_data: LoginRequest, client_ip: str = "unknown")
         "access_token": _access_token_for(user, session.id),
         "refresh_token": raw,
         "must_change_password": user.must_change_password,
-        "profile_completed": user.profile_completed,
+        "profile_completed": _profile_done(user),
         "role_id": user.role_id,
     }
 
@@ -142,7 +153,7 @@ def change_password(db: Session, user: User, password_data: ChangePasswordReques
         "access_token": _access_token_for(db_user, session.id),
         "refresh_token": raw,
         "role_id": db_user.role_id,
-        "profile_completed": db_user.profile_completed,
+        "profile_completed": _profile_done(db_user),
     }
 
 
@@ -153,15 +164,34 @@ def refresh_session(db: Session, refresh_token: str | None):
     if not refresh_token:
         raise invalid
 
+    token_hash = hash_refresh_token(refresh_token)
+    now = datetime.now(timezone.utc)
+
     row = (
         db.query(RefreshToken)
-        .filter(RefreshToken.token_hash == hash_refresh_token(refresh_token))
+        .filter(RefreshToken.token_hash == token_hash)
         .first()
     )
+
+    # Another tab rotated this token a moment ago. Accept the old value for a
+    # few seconds; the browser already holds the new refresh cookie.
+    rotated_in_parallel = False
+    if not row:
+        row = (
+            db.query(RefreshToken)
+            .filter(
+                RefreshToken.prev_token_hash == token_hash,
+                RefreshToken.rotated_at
+                > now - timedelta(seconds=ROTATION_GRACE_SECONDS),
+            )
+            .first()
+        )
+        rotated_in_parallel = row is not None
+
     if not row:
         raise invalid
 
-    if row.expires_at < datetime.now(timezone.utc):
+    if row.expires_at < now:
         db.delete(row)
         db.commit()
         raise invalid
@@ -172,18 +202,21 @@ def refresh_session(db: Session, refresh_token: str | None):
         db.commit()
         raise invalid
 
-    raw = generate_refresh_token()
-    row.token_hash = hash_refresh_token(raw)
-    row.expires_at = datetime.now(timezone.utc) + timedelta(
-        days=settings.refresh_token_expire_days
-    )
-    db.commit()
+    new_refresh: str | None = None
+
+    if not rotated_in_parallel:
+        new_refresh = generate_refresh_token()
+        row.prev_token_hash = row.token_hash
+        row.rotated_at = now
+        row.token_hash = hash_refresh_token(new_refresh)
+        row.expires_at = now + timedelta(days=settings.refresh_token_expire_days)
+        db.commit()
 
     return {
         "access_token": _access_token_for(user, row.id),
-        "refresh_token": raw,
+        "refresh_token": new_refresh,
         "must_change_password": user.must_change_password,
-        "profile_completed": user.profile_completed,
+        "profile_completed": _profile_done(user),
         "role_id": user.role_id,
     }
 

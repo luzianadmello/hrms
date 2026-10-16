@@ -12,14 +12,13 @@ import {
   CorporateFareOutlined,
   EventAvailableOutlined,
   PeopleOutlined,
-  PersonOutlineRounded,
   VisibilityOutlined,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
 import AppLayout from "../components/layout/AppLayout";
 import api from "../services/api";
-import { can, isEmployeeView } from "../utils/permissions";
+import { can, isEmployeeView, isTeamViewOnly, getRoleLabel } from "../utils/permissions";
 import type { EmployeeDetail, EmployeeProfile, EmployeeStats } from "../types/employee";
 
 const FONT = "'Montserrat', sans-serif";
@@ -118,6 +117,8 @@ function StatCard({ icon, title, value, subtitle, onClick }: StatCardProps) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const isEmployee = isEmployeeView();
+  const isManager = isTeamViewOnly();
+  const roleLabel = getRoleLabel();
 
   const [loading, setLoading] = useState(true);
 
@@ -147,7 +148,8 @@ export default function Dashboard() {
         setStats({
           total_employees: list.length,
           active_employees: list.filter((e) => e.status === "ACTIVE").length,
-          onboarding_employees: list.filter((e) => e.status === "ONBOARDING").length,
+          inactive_employees: list.filter((e) => e.status === "INACTIVE").length,
+          profile_incomplete: list.filter((e) => e.status === "ACTIVE" && !e.profile_completed).length,
           total_departments: new Set(list.map((e) => e.department_id).filter(Boolean)).size,
         });
       }
@@ -171,16 +173,17 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (isEmployee) {
+    if (isEmployee || isManager) {
       fetchEmployeeData();
-    } else {
+    }
+    if (!isEmployee && !isManager) {
       fetchHRData();
     }
-  }, [isEmployee, fetchEmployeeData, fetchHRData]);
+  }, [isEmployee, isManager, fetchEmployeeData, fetchHRData]);
 
   if (loading) {
     return (
-      <AppLayout pageTitle={isEmployee ? "My Dashboard" : "HR Dashboard"}>
+      <AppLayout pageTitle={isEmployee ? "My Dashboard" : isManager ? "My Dashboard" : "HR Dashboard"}>
         <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
           <CircularProgress sx={{ color: TEAL }} />
         </Box>
@@ -267,26 +270,7 @@ export default function Dashboard() {
             </Box>
           </Box>
 
-          <Button
-            variant="contained"
-            startIcon={<PersonOutlineRounded />}
-            onClick={() => navigate("/profile")}
-            sx={{
-              height: 44,
-              px: 3,
-              borderRadius: "10px",
-              backgroundColor: TEAL,
-              color: "#FFFFFF",
-              textTransform: "none",
-              fontFamily: FONT,
-              fontSize: "13px",
-              fontWeight: 600,
-              boxShadow: "none",
-              "&:hover": { backgroundColor: "#0C5F58" },
-            }}
-          >
-            My Profile
-          </Button>
+
         </Box>
 
       </AppLayout>
@@ -294,10 +278,41 @@ export default function Dashboard() {
   }
 
   // ========================================================
-  // RENDER: HR / ADMIN / MANAGER DASHBOARD
+  // RENDER: MANAGER DASHBOARD — employee-style welcome + team-only info
+  // ========================================================
+  if (isManager) {
+    const managerName = myProfile?.first_name
+      ? `${myProfile.first_name} ${myProfile.last_name || ""}`.trim()
+      : "Manager";
+    const initials = `${myProfile?.first_name?.[0] || "M"}${myProfile?.last_name?.[0] || ""}`.toUpperCase();
+    return (
+      <AppLayout pageTitle="My Dashboard" showSearch={false}>
+        <Box sx={{ p: { xs: 3, md: 4 }, borderRadius: "20px", backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: "0 4px 20px rgba(0,0,0,0.03)", mb: 3, display: "flex", alignItems: "center", gap: 2.5 }}>
+          <Avatar sx={{ width: 68, height: 68, bgcolor: INK, color: "#FFFFFF", fontFamily: FONT, fontSize: "22px", fontWeight: 700 }}>{initials}</Avatar>
+          <Box>
+            <Typography sx={{ fontFamily: FONT, fontSize: "12px", fontWeight: 700, color: TEAL, textTransform: "uppercase", letterSpacing: "0.8px", mb: 0.5 }}>Manager Portal</Typography>
+            <Typography component="h2" sx={{ fontFamily: FONT, fontSize: { xs: "22px", md: "28px" }, fontWeight: 700, color: INK, letterSpacing: "-0.6px" }}>Welcome back, {managerName}!</Typography>
+            <Typography sx={{ fontFamily: FONT, fontSize: "13px", color: MUTED, mt: 0.4 }}>{myProfile?.designation_name || "Manager"} • {myProfile?.department_name || "Department"}</Typography>
+          </Box>
+        </Box>
+        <Box sx={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, borderRadius: "16px", p: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+            <Box>
+              <Typography sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "18px", color: INK }}>Your Team</Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: "13px", color: MUTED, mt: 0.5 }}>View the employees who report to you.</Typography>
+            </Box>
+            <Button variant="contained" onClick={() => navigate("/employees")} sx={{ backgroundColor: INK, color: "#FFF", textTransform: "none", fontFamily: FONT, borderRadius: "10px", px: 2.5, "&:hover": { backgroundColor: "#2B2F38" } }}>View My Team</Button>
+          </Box>
+        </Box>
+      </AppLayout>
+    );
+  }
+
+  // ========================================================
+  // RENDER: HR / ADMIN DASHBOARD
   // ========================================================
   return (
-    <AppLayout pageTitle="HR Dashboard">
+    <AppLayout pageTitle={roleLabel === "Admin" ? "Admin Dashboard" : "HR Dashboard"}>
       {/* Top Header */}
       <Box
         sx={{
@@ -346,7 +361,7 @@ export default function Dashboard() {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
           <Button
             startIcon={<VisibilityOutlined />}
-            onClick={() => navigate("/employees/directory")}
+            onClick={() => navigate("/employees")}
             sx={{
               height: 42,
               px: 2.5,
@@ -361,7 +376,7 @@ export default function Dashboard() {
               "&:hover": { backgroundColor: "#FAF9F6", borderColor: TEAL },
             }}
           >
-            Employee Directory
+            {can("employee.view_all") ? "Employees" : "My Team"}
           </Button>
 
           {can("user.create") && (
@@ -399,7 +414,7 @@ export default function Dashboard() {
             gridTemplateColumns: {
               xs: "1fr",
               sm: "1fr 1fr",
-              md: "repeat(4, 1fr)",
+              md: "repeat(5, 1fr)",
             },
             gap: 2.5,
           }}
@@ -409,7 +424,7 @@ export default function Dashboard() {
             title="Total Employees"
             value={stats ? stats.total_employees : employees.length}
             subtitle="All Staff"
-            onClick={() => navigate("/employees/directory")}
+            onClick={() => navigate("/employees")}
           />
 
           <StatCard
@@ -417,15 +432,23 @@ export default function Dashboard() {
             title="Active Employees"
             value={stats ? stats.active_employees : employees.filter((e) => e.status === "ACTIVE").length}
             subtitle="Live"
-            onClick={() => navigate("/employees/directory")}
+            onClick={() => navigate("/employees?status=ACTIVE")}
+          />
+
+          <StatCard
+            icon={<PeopleOutlined />}
+            title="Inactive"
+            value={stats ? stats.inactive_employees : 0}
+            subtitle="Cannot log in"
+            onClick={() => navigate("/employees?status=INACTIVE")}
           />
 
           <StatCard
             icon={<EventAvailableOutlined />}
-            title="Onboarding"
-            value={stats ? stats.onboarding_employees : employees.filter((e) => e.status === "ONBOARDING").length}
-            subtitle="In-Progress"
-            onClick={() => navigate("/employees/directory")}
+            title="Profile Incomplete"
+            value={stats ? stats.profile_incomplete ?? 0 : 0}
+            subtitle="Active, not finished"
+            onClick={() => navigate("/employees?status=ACTIVE")}
           />
 
           <StatCard

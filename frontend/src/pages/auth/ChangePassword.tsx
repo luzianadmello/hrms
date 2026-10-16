@@ -18,7 +18,6 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
-import { setRoleId } from "../../utils/auth";
 import { logout } from "../../services/session";
 import { getErrorMessage } from "../../utils/errors";
 
@@ -125,8 +124,6 @@ function ChangePassword() {
       });
 
       // The server has already replaced the login cookies with fresh ones.
-      // Only the role hint is kept in the browser.
-      setRoleId(response.data.role_id);
 
       // Everyone with an employee record completes their profile next.
       // (Accounts without one, like the Admin, are already marked complete.)

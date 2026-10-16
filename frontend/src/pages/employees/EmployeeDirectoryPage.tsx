@@ -43,7 +43,7 @@ export default function EmployeeDirectoryPage() {
 
   return (
     <AppLayout
-      pageTitle="Employee Directory"
+      pageTitle="My Team"
       searchQuery={searchQuery}
       onSearchChange={handleSearchChange}
     >

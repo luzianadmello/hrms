@@ -3,7 +3,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 
 import api from "../../services/api";
-import { setRoleId } from "../../utils/auth";
 import { setPermissions } from "../../utils/permissions";
 
 /**
@@ -57,8 +56,7 @@ function ProtectedRoute({
 
         if (cancelled) return;
 
-        // The server is the source of truth for the role, not localStorage.
-        setRoleId(me.role_id);
+        // The server is the source of truth for role and permissions.
         setPermissions(me.permissions ?? [], me.role_name ?? "");
 
         let gate: Gate = "ok";
@@ -112,7 +110,7 @@ function ProtectedRoute({
           backgroundColor: "#F5F4F0",
         }}
       >
-        <CircularProgress sx={{ color: "#0F766E" }} />
+        <CircularProgress sx={{ color: "#E0442E" }} />
       </Box>
     );
   }
@@ -148,7 +146,7 @@ function ProtectedRoute({
             textTransform: "none",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 600,
-            color: "#0F766E",
+            color: "#E0442E",
           }}
         >
           Retry

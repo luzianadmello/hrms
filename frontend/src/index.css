@@ -15,3 +15,17 @@ body {
   font-family: 'Montserrat', sans-serif;
   background: #f5f4f0;
 }
+/* Neutral charcoal outlines for form controls; preserve explicit validation errors. */
+.MuiOutlinedInput-root:not(.Mui-error):hover .MuiOutlinedInput-notchedOutline {
+  border-color: #16181D;
+}
+.MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
+  border-color: #16181D;
+  border-width: 1.5px;
+}
+.MuiButton-outlined {
+  border-color: #16181D;
+}
+.MuiButton-outlined:hover {
+  border-color: #16181D;
+}

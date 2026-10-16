@@ -5,7 +5,9 @@ from database import get_db
 from models.user import User
 
 from schemas.employee import (
+    EmployeeHRUpdate,
     EmployeeProfileUpdate,
+    StatusChangeResponse,
     EmployeeProfileResponse,
     EmployeeLookupsResponse,
     EmployeeDetailResponse,
@@ -35,6 +37,10 @@ from utils.dependencies import (
     get_ready_user,
     require_permission,
     ensure_permission,
+    require_employee_view_scope,
+    require_employee_stats_scope,
+    employee_view_scope,
+    ensure_employee_target_access,
 )
 
 
@@ -55,11 +61,9 @@ router = APIRouter(
 def employee_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_ready_user),
+    view_scope: str = Depends(require_employee_stats_scope),
 ):
-    return get_employee_stats(
-        db,
-        current_user,
-    )
+    return get_employee_stats(db, view_scope, current_user)
 
 
 # ============================================================
@@ -129,11 +133,9 @@ def update_my_profile(
 def get_all_employees(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_ready_user),
+    view_scope: str = Depends(require_employee_view_scope),
 ):
-    return list_employees(
-        db,
-        current_user,
-    )
+    return list_employees(db, current_user, view_scope)
 
 
 # ============================================================
@@ -169,11 +171,8 @@ def get_single_employee(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_ready_user),
 ):
-    return get_employee_by_id(
-        db,
-        employee_id,
-        current_user,
-    )
+    view_scope = employee_view_scope(db, current_user, allow_self=True)
+    return get_employee_by_id(db, employee_id, current_user, view_scope)
 
 
 # ============================================================
@@ -182,7 +181,7 @@ def get_single_employee(
 
 @router.patch(
     "/{employee_id}/status",
-    response_model=EmployeeDetailResponse,
+    response_model=StatusChangeResponse,
 )
 def change_employee_status(
     employee_id: int,
@@ -197,6 +196,7 @@ def change_employee_status(
         current_user,
         "user.activate" if target == "ACTIVE" else "user.deactivate",
     )
+    ensure_employee_target_access(db, current_user, employee_id)
 
     return update_employee_status(
         db,
@@ -216,16 +216,12 @@ def change_employee_status(
 )
 def update_single_employee(
     employee_id: int,
-    data: EmployeeProfileUpdate,
+    data: EmployeeHRUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("user.update")),
+    current_user: User = Depends(require_permission("employee.update")),
 ):
-    return update_employee_by_id(
-        db,
-        employee_id,
-        data,
-        current_user,
-    )
+    ensure_employee_target_access(db, current_user, employee_id, allow_peer_hr_edit=True)
+    return update_employee_by_id(db, employee_id, data, current_user)
 
 
 # ============================================================
@@ -241,8 +237,5 @@ def reset_single_employee_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("user.reset_password")),
 ):
-    return reset_employee_password(
-        db,
-        employee_id,
-        current_user,
-    )
+    ensure_employee_target_access(db, current_user, employee_id)
+    return reset_employee_password(db, employee_id, current_user)

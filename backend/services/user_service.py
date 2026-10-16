@@ -13,7 +13,7 @@ from models.employee import Employee
 from models.user import User
 from schemas.user import CreateEmployeeRequest
 from utils.security import hash_password
-from utils.rbac import creatable_role_ids
+from utils.rbac import creatable_role_ids, manager_employee_query
 
 
 def generate_temporary_password(length: int = 12) -> str:
@@ -58,17 +58,20 @@ def create_employee(
             detail="Invalid designation",
         )
 
-    if data.manager_id is not None and not db.get(
-        Employee,
-        data.manager_id
+    if data.manager_id is not None and not (
+        manager_employee_query(db)
+        .filter(Employee.employee_id == data.manager_id)
+        .first()
     ):
         raise HTTPException(
             status_code=400,
             detail="Invalid manager",
         )
 
-    # Generate temporary password
-    temp_password = generate_temporary_password()
+    # No password is created or sent here. The employee is Inactive until HR
+    # clicks Activate; until then the account holds a random password
+    # nobody knows and cannot log in.
+    unusable_password = secrets.token_urlsafe(32)
 
     # 4. Create Employee + User in one transaction
     try:
@@ -80,7 +83,7 @@ def create_employee(
             dob=data.dob,
             date_of_joining=data.date_of_joining,
             employment_type=data.employment_type.value,
-            status="ONBOARDING",
+            status="INACTIVE",
             department_id=data.department_id,
             designation_id=data.designation_id,
             manager_id=data.manager_id,
@@ -90,16 +93,14 @@ def create_employee(
         db.flush()
 
         # Generate employee code after employee_id is available
-        employee.employee_code = (
-            f"EMP{employee.employee_id - 100:03d}"
-        )
+        employee.employee_code = f"EMP{employee.employee_id:04d}"
 
         user = User(
             role_id=data.role_id,
             employee_id=employee.employee_id,
             email=email,
-            password_hash=hash_password(temp_password),
-            is_active=True,
+            password_hash=hash_password(unusable_password),
+            is_active=False,
             must_change_password=True,
         )
 
@@ -117,13 +118,12 @@ def create_employee(
             detail="Employee or email already exists",
         )
 
-    # 5. Return temporary password for development/testing
     return {
-        "message": "Employee created successfully",
+        "message": "Employee created as Inactive. Activate them when they should receive their login details.",
         "employee_id": employee.employee_id,
         "employee_code": employee.employee_code,
         "user_id": user.user_id,
         "role_id": user.role_id,
         "email": email,
-        "temporary_password": temp_password,
+        "status": employee.status,
     }

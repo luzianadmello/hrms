@@ -7,8 +7,7 @@ import CompleteProfile from "./pages/auth/CompleteProfile";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 import Dashboard from "./pages/Dashboard";
-import EmployeeManagement from "./pages/employees/EmployeeManagement";
-import EmployeeDirectoryPage from "./pages/employees/EmployeeDirectoryPage";
+import EmployeesHome from "./pages/employees/EmployeesHome";
 import CreateEmployee from "./pages/employees/CreateEmployee";
 import ProfilePage from "./pages/profile/ProfilePage";
 
@@ -53,24 +52,20 @@ function App() {
           }
         />
 
-        {/* Dedicated Employee Management landing page for HR / Admin */}
+        {/* Employees: HR / Admin see everyone, a manager sees their team */}
         <Route
           path="/employees"
           element={
-            <ProtectedRoute requiredPermission={CAN_CREATE_USERS}>
-              <EmployeeManagement />
+            <ProtectedRoute requiredPermission={CAN_VIEW_EMPLOYEES}>
+              <EmployeesHome />
             </ProtectedRoute>
           }
         />
 
-        {/* Employee Directory for HR / Admin / Manager */}
+        {/* The old directory address now points at the same page */}
         <Route
           path="/employees/directory"
-          element={
-            <ProtectedRoute requiredPermission={CAN_VIEW_EMPLOYEES}>
-              <EmployeeDirectoryPage />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/employees" replace />}
         />
 
         {/* Create Employee for HR / Admin */}

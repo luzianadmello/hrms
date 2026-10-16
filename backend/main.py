@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,7 +8,18 @@ from database import engine
 from routes import auth, employee
 
 
-app = FastAPI()
+# Show the audit lines (who changed what) in the console
+logging.basicConfig(level=logging.INFO)
+
+# The interactive docs list every endpoint: development only
+is_dev = settings.environment == "development"
+
+app = FastAPI(
+    title="HRMS API",
+    docs_url="/docs" if is_dev else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if is_dev else None,
+)
 
 
 app.add_middleware(

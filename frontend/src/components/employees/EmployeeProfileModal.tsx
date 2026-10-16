@@ -32,6 +32,7 @@ const BORDER = "#DAD7CF";
 
 import { useNavigate } from "react-router-dom";
 import { EditOutlined } from "@mui/icons-material";
+import StatusChip from "./StatusChip";
 import { Button } from "@mui/material";
 
 interface EmployeeProfileModalProps {
@@ -39,6 +40,7 @@ interface EmployeeProfileModalProps {
   employee: EmployeeDetail | null;
   onClose: () => void;
   onSaved?: () => void;
+  canEdit?: boolean;
 }
 
 interface DetailRowProps {
@@ -95,6 +97,7 @@ export default function EmployeeProfileModal({
   open,
   employee,
   onClose,
+  canEdit = true,
 }: EmployeeProfileModalProps) {
   const navigate = useNavigate();
   if (!employee) return null;
@@ -219,21 +222,7 @@ export default function EmployeeProfileModal({
                 }}
               />
 
-              <Chip
-                label={employee.status}
-                size="small"
-                sx={{
-                  fontFamily: FONT,
-                  fontWeight: 600,
-                  fontSize: "11px",
-                  backgroundColor:
-                    employee.status === "ACTIVE"
-                      ? "rgba(16, 185, 129, 0.12)"
-                      : "rgba(245, 158, 11, 0.12)",
-                  color: employee.status === "ACTIVE" ? "#059669" : "#D97706",
-                  borderRadius: "6px",
-                }}
-              />
+              <StatusChip status={employee.status} />
             </Box>
 
             <Typography sx={{ fontFamily: FONT, fontSize: "14px", color: MUTED }}>
@@ -399,7 +388,7 @@ export default function EmployeeProfileModal({
             Close
           </Button>
 
-          <Button
+          {canEdit && <Button
             variant="contained"
             startIcon={<EditOutlined />}
             onClick={() => {
@@ -419,7 +408,7 @@ export default function EmployeeProfileModal({
             }}
           >
             Edit Profile
-          </Button>
+          </Button>}
         </Box>
       </DialogContent>
     </Dialog>

@@ -83,6 +83,25 @@ permissions = [
         "action": "MANAGE",
         "description": "Manage roles, permissions and role-creation rules",
     },
+    
+    {
+        "permission_name": "employee.update",
+        "module": "Employee Management",
+        "action": "UPDATE",
+        "description": "Allows updating permitted employee employment details",
+    },
+    {
+        "permission_name": "employee.view_stats",
+        "module": "Employee Management",
+        "action": "VIEW_STATS",
+        "description": "Allows viewing organization-wide employee statistics",
+    },
+    {
+        "permission_name": "employee.update_hr",
+        "module": "Employee Management",
+        "action": "UPDATE_HR_PROFILE",
+        "description": "Allows an authorized HR user to edit another HR employee profile",
+    },
 ]
 
 

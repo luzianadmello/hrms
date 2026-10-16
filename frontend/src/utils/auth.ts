@@ -2,18 +2,12 @@ import { clearPermissions } from "./permissions";
 
 const ROLE_KEY = "role_id";
 
-// The login token now lives in HttpOnly cookies that JavaScript can't read.
-// Only the role id is kept here, as a UI hint. The server decides what is allowed.
-export function getRoleId(): number {
-  return Number(localStorage.getItem(ROLE_KEY));
-}
+// Login tokens live in HttpOnly cookies that JavaScript can't read, and
+// permissions are kept in memory (see permissions.ts). Nothing about the
+// session is stored in localStorage any more.
 
-export function setRoleId(roleId: number | string) {
-  localStorage.setItem(ROLE_KEY, String(Number(roleId)));
-}
-
-/** Removes only this app's key (not unrelated localStorage data). */
+/** Clears the in-memory permissions and removes any old leftover key. */
 export function clearSession() {
-  localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem(ROLE_KEY); // leftover from older versions
   clearPermissions();
 }
