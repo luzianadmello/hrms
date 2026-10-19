@@ -93,8 +93,8 @@ export default function EmployeeManagement() {
     try {
       const res = await api.get<EmployeeStats>("/employees/stats");
       setStats(res.data);
-    } catch {
-      // handled
+    } catch (error) {
+      console.error("Failed to load employee statistics from /employees/stats:", error);
     } finally {
       setStatsLoading(false);
     }
@@ -447,10 +447,13 @@ export default function EmployeeManagement() {
                         fontWeight: 700,
                         fontSize: "12px",
                         color: MUTED,
-                        flexDirection: "column",
-                        alignItems: "flex-start",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: "3px",
                         "& .MuiTableSortLabel-icon": {
                           margin: 0,
+                          opacity: 1,
+                          color: `${MUTED} !important`,
                           transform: ((i === 1 && sortBy === "employee_code") || (i === 3 && sortBy === "date_of_joining") ? sortDirection : "asc") === "asc" ? "rotate(0deg) !important" : "rotate(180deg) !important",
                         },
                       }}
