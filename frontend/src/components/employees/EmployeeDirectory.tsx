@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import {
   AddRounded,
+  ArrowDropDownRounded,
   CheckCircleOutlineRounded,
   LockResetRounded,
   RefreshRounded,
@@ -46,10 +47,10 @@ import StatusChip from "./StatusChip";
 import ActionToast from "../common/ActionToast";
 
 const FONT = "'Montserrat', sans-serif";
-const INK = "#16181D";
-const TEAL = "#16181D";
-const MUTED = "#6B6F76";
-const BORDER = "#DAD7CF";
+const INK = "var(--hrms-text)";
+const TEAL = "var(--hrms-text)";
+const MUTED = "var(--hrms-muted)";
+const BORDER = "var(--hrms-border)";
 
 interface EmployeeDirectoryProps {
   employees: EmployeeDetail[];
@@ -172,8 +173,8 @@ export default function EmployeeDirectory({
       setBanner({
         severity: "success",
         message: pendingNewStatus === "ACTIVE"
-          ? `Employee activated successfully. Login details sent to ${statusDialogTarget.email}.`
-          : "Employee deactivated successfully. All active sessions have been revoked.",
+          ? `Employee activated. Login details mailed to ${statusDialogTarget.email}.`
+          : "Employee deactivated. They have been signed out everywhere.",
       });
 
       setStatusDialogTarget(null);
@@ -226,7 +227,7 @@ export default function EmployeeDirectory({
       {/* Top action & filter bar */}
       <Box
         sx={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "var(--hrms-surface)",
           border: `1px solid ${BORDER}`,
           borderRadius: "16px",
           p: 2.5,
@@ -260,9 +261,9 @@ export default function EmployeeDirectory({
                 borderRadius: "10px",
                 fontFamily: FONT,
                 fontSize: "13px",
-                backgroundColor: "#FAF9F6",
+                backgroundColor: "var(--hrms-surface-alt)",
                 "& fieldset": { borderColor: BORDER },
-                "&:hover fieldset": { borderColor: "#A9A69D" },
+                "&:hover fieldset": { borderColor: "var(--hrms-control-border)" },
                 "&.Mui-focused fieldset": { borderColor: TEAL },
               },
             }}
@@ -277,7 +278,7 @@ export default function EmployeeDirectory({
                 borderRadius: "10px",
                 fontFamily: FONT,
                 fontSize: "13px",
-                backgroundColor: "#FAF9F6",
+                backgroundColor: "var(--hrms-surface-alt)",
                 "& fieldset": { borderColor: BORDER },
               },
             }}
@@ -307,7 +308,7 @@ export default function EmployeeDirectory({
                 borderRadius: "10px",
                 fontFamily: FONT,
                 fontSize: "13px",
-                backgroundColor: "#FAF9F6",
+                backgroundColor: "var(--hrms-surface-alt)",
                 "& fieldset": { borderColor: BORDER },
               },
             }}
@@ -340,7 +341,8 @@ export default function EmployeeDirectory({
                 border: `1px solid ${BORDER}`,
                 borderRadius: "10px",
                 color: INK,
-                "&:hover": { backgroundColor: "#FAF9F6" },
+                backgroundColor: "var(--hrms-surface-alt)",
+                "&:hover": { backgroundColor: "var(--hrms-hover)" },
               }}
             >
               <RefreshRounded sx={{ fontSize: 20 }} />
@@ -355,13 +357,15 @@ export default function EmployeeDirectory({
                 height: 40,
                 px: 2.2,
                 borderRadius: "10px",
-                backgroundColor: INK,
-                color: "#FFFFFF",
+                backgroundColor: "var(--hrms-btn-primary-bg)",
+                color: "var(--hrms-btn-primary-text)",
+                border: "1px solid var(--hrms-btn-primary-border)",
                 textTransform: "none",
                 fontFamily: FONT,
                 fontSize: "13px",
-                fontWeight: 600,
-                "&:hover": { backgroundColor: "#2B2F38" },
+                fontWeight: 650,
+                boxShadow: "none",
+                "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)", boxShadow: "none" },
               }}
             >
               Create Employee
@@ -373,14 +377,14 @@ export default function EmployeeDirectory({
       {/* Employees Table Container */}
       <TableContainer
         sx={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "var(--hrms-surface)",
           border: `1px solid ${BORDER}`,
           borderRadius: "16px",
           overflow: "hidden",
         }}
       >
         <Table sx={{ minWidth: 800 }}>
-          <TableHead sx={{ backgroundColor: "#FAF9F6" }}>
+          <TableHead sx={{ backgroundColor: "var(--hrms-surface-alt)" }}>
             <TableRow>
               <TableCell sx={{ fontFamily: FONT, fontWeight: 700, fontSize: "12px", color: MUTED }}>
                 EMPLOYEE
@@ -435,7 +439,6 @@ export default function EmployeeDirectory({
                 const fullName = `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Employee";
                 const initials = `${(emp.first_name?.[0] || "").toUpperCase()}${(emp.last_name?.[0] || "").toUpperCase()}` || "EM";
                 const isActive = emp.is_active && emp.status === "ACTIVE";
-                const isInactive = !emp.is_active || emp.status === "INACTIVE";
 
                 return (
                   <TableRow
@@ -443,7 +446,7 @@ export default function EmployeeDirectory({
                     hover
                     sx={{
                       cursor: "pointer",
-                      "&:hover": { backgroundColor: "rgba(22,24,29,0.03)" },
+                      "&:hover": { backgroundColor: "var(--hrms-hover)" },
                     }}
                     onClick={() => setActiveEmployee(emp)}
                   >
@@ -496,8 +499,9 @@ export default function EmployeeDirectory({
                           fontFamily: FONT,
                           fontWeight: 700,
                           fontSize: "11px",
-                          backgroundColor: "#F5F4F0",
+                          backgroundColor: "var(--hrms-surface-alt)",
                           color: INK,
+                          border: `1px solid ${BORDER}`,
                           borderRadius: "6px",
                         }}
                       />
@@ -549,38 +553,17 @@ export default function EmployeeDirectory({
                               : "Click to reactivate employee account"
                           }
                         >
-                          <Chip
-                            label={isActive ? "Active" : isInactive ? "Inactive" : emp.status}
-                            size="small"
-                            onClick={() =>
-                              handleInitiateStatusChange(
-                                emp,
-                                isActive ? "INACTIVE" : "ACTIVE"
-                              )
-                            }
-                            sx={{
-                              fontFamily: FONT,
-                              fontWeight: 700,
-                              fontSize: "11px",
-                              cursor: "pointer",
-                              transition: "all 0.15s ease",
-                              backgroundColor: isActive
-                                ? "rgba(16, 185, 129, 0.12)"
-                                : isInactive
-                                ? "rgba(239, 68, 68, 0.12)"
-                                : "rgba(245, 158, 11, 0.12)",
-                              color: isActive
-                                ? "#059669"
-                                : isInactive
-                                ? "#DC2626"
-                                : "#D97706",
-                              border: "1px solid transparent",
-                              "&:hover": {
-                                borderColor: isActive ? "#059669" : "#DC2626",
-                                transform: "scale(1.04)",
-                              },
-                            }}
-                          />
+                          <span>
+                            <StatusChip
+                              status={emp.status}
+                              onClick={() =>
+                                handleInitiateStatusChange(
+                                  emp,
+                                  isActive ? "INACTIVE" : "ACTIVE"
+                                )
+                              }
+                            />
+                          </span>
                         </Tooltip>
                       ) : (
                         <StatusChip status={emp.status} />
@@ -595,10 +578,11 @@ export default function EmployeeDirectory({
                           size="small"
                           sx={{
                             fontFamily: FONT,
-                            fontWeight: 600,
+                            fontWeight: 700,
                             fontSize: "10px",
-                            backgroundColor: "rgba(22,24,29,0.1)",
-                            color: TEAL,
+                            backgroundColor: "rgba(16,185,129,0.16)",
+                            color: "#10B981 !important",
+                            border: "1px solid rgba(16,185,129,0.3)",
                             borderRadius: "6px",
                           }}
                         />
@@ -608,10 +592,11 @@ export default function EmployeeDirectory({
                           size="small"
                           sx={{
                             fontFamily: FONT,
-                            fontWeight: 600,
+                            fontWeight: 700,
                             fontSize: "10px",
-                            backgroundColor: "#F0EFEB",
-                            color: MUTED,
+                            backgroundColor: "rgba(245,158,11,0.16)",
+                            color: "#F59E0B !important",
+                            border: "1px solid rgba(245,158,11,0.3)",
                             borderRadius: "6px",
                           }}
                         />
@@ -630,9 +615,16 @@ export default function EmployeeDirectory({
                             fontFamily: FONT,
                             fontSize: "12px",
                             fontWeight: 600,
-                            color: TEAL,
+                            color: "var(--hrms-text)",
+                            backgroundColor: "var(--hrms-surface-alt)",
+                            border: `1px solid ${BORDER}`,
                             borderRadius: "8px",
-                            "&:hover": { backgroundColor: "rgba(22,24,29,0.08)" },
+                            px: 1.5,
+                            py: 0.5,
+                            "&:hover": {
+                              backgroundColor: "var(--hrms-hover)",
+                              borderColor: "var(--hrms-control-border)",
+                            },
                           }}
                         >
                           View Profile
@@ -645,10 +637,15 @@ export default function EmployeeDirectory({
                               onClick={() => setResetDialogTarget(emp)}
                               sx={{
                                 color: MUTED,
+                                backgroundColor: "var(--hrms-surface-alt)",
                                 border: `1px solid ${BORDER}`,
                                 borderRadius: "8px",
                                 p: 0.6,
-                                "&:hover": { color: INK, borderColor: INK, backgroundColor: "#FAF9F6" },
+                                "&:hover": {
+                                  color: INK,
+                                  borderColor: "var(--hrms-control-border)",
+                                  backgroundColor: "var(--hrms-hover)",
+                                },
                               }}
                             >
                               <LockResetRounded sx={{ fontSize: 18 }} />
@@ -725,9 +722,8 @@ export default function EmployeeDirectory({
                   {statusDialogTarget?.first_name} {statusDialogTarget?.last_name}
                 </strong>{" "}
                 ({statusDialogTarget?.employee_code})? A new temporary password will be generated and
-                sent to <strong>{statusDialogTarget?.email}</strong>. For now, the formal email will be
-                printed in the backend terminal. The employee will be asked to change their password
-                and complete their profile after logging in.
+                mailed to <strong>{statusDialogTarget?.email}</strong>. The employee will be asked to
+                change their password and complete their profile after logging in.
               </>
             )}
           </Typography>
@@ -757,10 +753,10 @@ export default function EmployeeDirectory({
               fontWeight: 600,
               borderRadius: "10px",
               px: 2.5,
-              backgroundColor: pendingNewStatus === "INACTIVE" ? "#DC2626" : TEAL,
-              "&:hover": {
-                backgroundColor: pendingNewStatus === "INACTIVE" ? "#B91C1C" : "#0C5F58",
-              },
+              backgroundColor: pendingNewStatus === "INACTIVE" ? "#DC2626" : "var(--hrms-btn-primary-bg)",
+              color: pendingNewStatus === "INACTIVE" ? "#FFF" : "var(--hrms-btn-primary-text)",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: pendingNewStatus === "INACTIVE" ? "#B91C1C" : "var(--hrms-btn-primary-hover)", boxShadow: "none" },
             }}
           >
             {statusUpdating ? (
@@ -784,6 +780,9 @@ export default function EmployeeDirectory({
               borderRadius: "16px",
               p: 1,
               maxWidth: 440,
+              backgroundColor: "var(--hrms-surface)",
+              color: "var(--hrms-text)",
+              backgroundImage: "none",
             },
           },
         }}
@@ -847,8 +846,10 @@ export default function EmployeeDirectory({
               fontWeight: 600,
               borderRadius: "10px",
               px: 2.5,
-              backgroundColor: INK,
-              "&:hover": { backgroundColor: "#2B2F38" },
+              backgroundColor: "var(--hrms-btn-primary-bg)",
+              color: "var(--hrms-btn-primary-text)",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)", boxShadow: "none" },
             }}
           >
             {resettingPassword ? (

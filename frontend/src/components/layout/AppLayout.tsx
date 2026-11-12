@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { Box } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 
 import AppNavbar from "./AppNavbar";
 import DashboardSidebar, { SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_WIDTH } from "./DashboardSidebar";
-import { logout } from "../../services/session";
+import { useThemeMode } from "../../contexts/ThemeModeContext";
 
 const FONT = "'Montserrat', sans-serif";
 
@@ -23,62 +22,30 @@ export default function AppLayout({
   onSearchChange,
   showSearch,
 }: AppLayoutProps) {
-  const navigate = useNavigate();
+  const { mode } = useThemeMode();
+  const isDark = mode === "dark";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    await logout();
-    navigate("/login", { replace: true });
-  };
 
   return (
     <Box
       sx={{
-        display: "flex",
+        // The navigation is fixed-position, so it does not participate in
+        // layout flow. Use a block root and offset the content wrapper below.
+        display: "block",
+        width: "100%",
         minHeight: "100vh",
-        backgroundColor: "#F5F4F0",
+        backgroundColor: isDark ? "#34373D" : "#F5F4F0",
         fontFamily: FONT,
         position: "relative",
         overflowX: "hidden",
 
-        "&::before": {
-          content: '""',
-          position: "fixed",
-          width: 480,
-          height: 480,
-          borderRadius: "50%",
-          top: -180,
-          right: -120,
-          filter: "blur(110px)",
-          background: "rgba(22,24,29,0.10)",
-          pointerEvents: "none",
-          zIndex: 0,
-        },
-
-        "&::after": {
-          content: '""',
-          position: "fixed",
-          width: 400,
-          height: 400,
-          borderRadius: "50%",
-          bottom: -180,
-          left: -120,
-          filter: "blur(110px)",
-          background: "rgba(214,190,150,0.25)",
-          pointerEvents: "none",
-          zIndex: 0,
-        },
       }}
     >
       {/* Sidebar */}
       <DashboardSidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
-        onLogout={handleLogout}
-        loggingOut={loggingOut}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
       />
@@ -86,9 +53,14 @@ export default function AppLayout({
       {/* Main Wrapper */}
       <Box
         sx={{
-          flexGrow: 1,
+          // The sidebar is fixed and removed from normal flex flow. Reserve
+          // its width explicitly so page content never renders underneath it.
+          flexGrow: 0,
+          flexShrink: 0,
+          boxSizing: "border-box",
           ml: { xs: 0, md: `${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH}px` },
           width: { xs: "100%", md: `calc(100% - ${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH}px)` },
+          minWidth: 0,
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
@@ -111,10 +83,13 @@ export default function AppLayout({
           component="main"
           sx={{
             flexGrow: 1,
-            p: { xs: 2.5, sm: 3.5, md: 4.5 },
+            width: "100%",
+            minWidth: 0,
+            boxSizing: "border-box",
+            p: { xs: 2.25, sm: 3, md: 3.5 },
           }}
         >
-          <Box sx={{ maxWidth: 1250, mx: "auto" }}>
+          <Box sx={{ width: "100%", maxWidth: 1250, minWidth: 0, mx: "auto" }}>
             {children}
           </Box>
         </Box>

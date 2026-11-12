@@ -19,7 +19,6 @@ export interface EmployeeDetail {
   manager_name: string | null;
   profile_completed: boolean;
   is_active: boolean;
-  last_login: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;

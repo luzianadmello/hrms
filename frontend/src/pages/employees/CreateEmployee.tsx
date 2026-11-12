@@ -291,7 +291,7 @@ export default function CreateEmployee() {
       });
 
       setSuccess(
-        `Employee ${response.data.employee_code} was created as Inactive. They cannot log in until you activate them.`
+        `Employee ${response.data.employee_code} created successfully as Inactive.`
       );
 
       setCreated({
@@ -326,6 +326,7 @@ export default function CreateEmployee() {
 
     setInviting(true);
     setGeneralError("");
+    setSuccess("");
 
     try {
       await api.patch<StatusChangeResponse>(
@@ -402,7 +403,7 @@ export default function CreateEmployee() {
           </Typography>
 
           <Typography sx={{ fontFamily: FONT, fontSize: "14px", color: MUTED, mt: 0.5 }}>
-            Create an employee account and assign their department and role. The account stays Inactive until you activate it; activating emails the login details.
+            Create an employee account and assign their company details. Every new account starts Inactive. Activating it generates a temporary password and prints the formal login email in the backend terminal until email delivery is configured.
           </Typography>
         </Box>
 
@@ -447,9 +448,7 @@ export default function CreateEmployee() {
               </Typography>
 
               <Typography sx={{ fontFamily: FONT, fontSize: "14px", color: INK, lineHeight: 1.6 }}>
-                Activate {created.employee_code} now? We&apos;ll email login
-                details to <strong>{created.email}</strong>. You can also do
-                this later from the Employees page.
+                Activate {created.employee_code} now? A new temporary password will be generated and the login email prepared for <strong>{created.email}</strong>. For now, the complete email is printed in the backend terminal. You can also activate this employee later from the Employees page.
               </Typography>
 
               <Box sx={{ display: "flex", gap: 1.5, mt: 2 }}>
@@ -458,9 +457,9 @@ export default function CreateEmployee() {
                   disableElevation
                   disabled={inviting}
                   onClick={handleInviteNow}
-                  sx={{ textTransform: "none", fontFamily: FONT, fontWeight: 600, borderRadius: "10px", px: 2.5, backgroundColor: INK, "&:hover": { backgroundColor: "#2B2F38" } }}
+                  sx={{ textTransform: "none", fontFamily: FONT, fontWeight: 650, borderRadius: "10px", px: 2.5, backgroundColor: "var(--hrms-btn-primary-bg)", color: "var(--hrms-btn-primary-text)", "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)" } }}
                 >
-                  {inviting ? <CircularProgress size={18} sx={{ color: "#FFFFFF" }} /> : "Activate now"}
+                  {inviting ? <CircularProgress size={18} sx={{ color: "var(--hrms-btn-primary-text)" }} /> : "Activate now"}
                 </Button>
 
                 <Button
@@ -684,13 +683,13 @@ export default function CreateEmployee() {
                 borderRadius: "10px",
                 textTransform: "none",
                 fontFamily: FONT,
-                fontWeight: 600,
-                color: "#FFFFFF",
-                backgroundColor: INK,
-                "&:hover": { backgroundColor: "#2B2F38" },
+                fontWeight: 650,
+                color: "var(--hrms-btn-primary-text)",
+                backgroundColor: "var(--hrms-btn-primary-bg)",
+                "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)" },
                 "&.Mui-disabled": {
-                  backgroundColor: "#D9D7D0",
-                  color: "#FFFFFF",
+                  backgroundColor: "var(--hrms-border)",
+                  color: "var(--hrms-muted)",
                 },
               }}
             >

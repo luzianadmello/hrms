@@ -12,15 +12,18 @@ import {
   Typography,
 } from "@mui/material";
 import {
+  DarkModeRounded,
+  LightModeRounded,
   LogoutRounded,
   MenuRounded,
   PersonOutlineRounded,
   SearchRounded,
 } from "@mui/icons-material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import api from "../../services/api";
 import { logout } from "../../services/session";
+import { useThemeMode } from "../../contexts/ThemeModeContext";
 import { canAny, getRoleLabel } from "../../utils/permissions";
 
 const FONT = "'Montserrat', sans-serif";
@@ -38,15 +41,15 @@ interface AppNavbarProps {
 }
 
 export default function AppNavbar({
-  pageTitle,
+  pageTitle: _pageTitle,
   onMobileMenuToggle,
   searchQuery = "",
   onSearchChange,
   showSearch,
 }: AppNavbarProps) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const hideDashboardTitle = location.pathname === "/dashboard";
+  const { mode, toggleMode } = useThemeMode();
+  const isDark = mode === "dark";
   const canSearchEmployees = canAny("employee.view_all", "employee.view_team");
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -156,14 +159,19 @@ export default function AppNavbar({
     <Box
       component="header"
       sx={{
-        height: 70,
-        backgroundColor: "#FFFFFF",
-        borderBottom: `1px solid ${BORDER}`,
+        height: { xs: 56, md: 58 },
+        mx: 0,
+        mt: 0,
+        px: { xs: 1.5, sm: 2.25, md: 3 },
+        width: "auto",
+        backgroundColor: isDark ? "#2B2E35" : "#F8F8F7",
+        borderBottom: `1px solid ${isDark ? "#444852" : "#E2E2DE"}`,
+        borderRadius: 0,
+        boxShadow: "none",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        px: { xs: 2, sm: 3, md: 4 },
-        position: "sticky",
+        position: "relative",
         top: 0,
         zIndex: 50,
       }}
@@ -177,7 +185,7 @@ export default function AppNavbar({
               display: { xs: "flex", md: "none" },
               border: `1px solid ${BORDER}`,
               borderRadius: "10px",
-              color: INK,
+              color: isDark ? "#F3F4F6" : INK,
               p: 1,
             }}
           >
@@ -185,61 +193,7 @@ export default function AppNavbar({
           </IconButton>
         )}
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box
-            onClick={() => navigate("/dashboard")}
-            sx={{
-              display: { xs: "none", sm: "flex" },
-              alignItems: "center",
-              gap: 1.2,
-              cursor: "pointer",
-              pr: 2,
-              borderRight: `1px solid ${BORDER}`,
-            }}
-          >
-            <Box
-              sx={{
-                width: 32,
-                height: 32,
-                borderRadius: "8px",
-                backgroundColor: TEAL,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#FFFFFF",
-                fontWeight: 800,
-                fontSize: "14px",
-              }}
-            >
-              H
-            </Box>
-            <Typography
-              sx={{
-                fontFamily: FONT,
-                fontWeight: 700,
-                fontSize: "16px",
-                color: INK,
-                letterSpacing: "-0.5px",
-              }}
-            >
-              HRMS
-            </Typography>
-          </Box>
-
-          {/* Keep dashboard title in the page content to avoid duplication. */}
-          {!hideDashboardTitle && <Typography
-            component="h1"
-            sx={{
-              fontFamily: FONT,
-              fontWeight: 700,
-              fontSize: { xs: "16px", sm: "18px", md: "20px" },
-              color: INK,
-              letterSpacing: "-0.4px",
-            }}
-          >
-            {pageTitle}
-          </Typography>}
-        </Box>
+        {/* Keep the navbar clean: page branding and title live in the page content/sidebar. */}
       </Box>
 
       {/* Center/Right section: Search Field + User Profile Menu */}
@@ -270,8 +224,9 @@ export default function AppNavbar({
                     borderRadius: "10px",
                     fontFamily: FONT,
                     fontSize: "13px",
-                    backgroundColor: "#FAF9F6",
-                    "& fieldset": { borderColor: BORDER },
+                    backgroundColor: isDark ? "#363A43" : "#FFFFFF",
+                    color: isDark ? "#F3F4F6" : INK,
+                    "& fieldset": { borderColor: isDark ? "#505560" : "#E2E2DE" },
                     "&:hover fieldset": { borderColor: "#A9A69D" },
                     "&.Mui-focused fieldset": { borderColor: TEAL },
                   },
@@ -281,6 +236,27 @@ export default function AppNavbar({
           </Box>
         )}
 
+        {/* Theme toggle sits immediately to the left of the unchanged profile control. */}
+        <Tooltip title={isDark ? "Switch to light theme" : "Switch to dark theme"}>
+          <IconButton
+            onClick={toggleMode}
+            aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            size="small"
+            sx={{
+              width: 36,
+              height: 36,
+              border: `1px solid ${isDark ? "#505560" : "#E2E2DE"}`,
+              borderRadius: "10px",
+              color: isDark ? "#F3F4F6" : INK,
+              backgroundColor: isDark ? "#363A43" : "#FFFFFF",
+              transition: "background-color 160ms ease, border-color 160ms ease",
+              "&:hover": { backgroundColor: isDark ? "#41454F" : "#F0F0ED" },
+            }}
+          >
+            {isDark ? <LightModeRounded sx={{ fontSize: 19 }} /> : <DarkModeRounded sx={{ fontSize: 19 }} />}
+          </IconButton>
+        </Tooltip>
+
         {/* User Profile / Avatar Icon & Dropdown */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Tooltip title="Account settings">
@@ -289,7 +265,7 @@ export default function AppNavbar({
               size="small"
               sx={{
                 p: 0.5,
-                border: `1px solid ${openMenu ? TEAL : BORDER}`,
+                border: `1px solid ${openMenu ? TEAL : (isDark ? "#505560" : "#E2E2DE")}`,
                 borderRadius: "50%",
                 transition: "all 0.2s ease",
                 "&:hover": { borderColor: TEAL },
@@ -299,8 +275,8 @@ export default function AppNavbar({
                 sx={{
                   width: 36,
                   height: 36,
-                  bgcolor: "rgba(22,24,29,0.12)",
-                  color: TEAL,
+                  bgcolor: isDark ? "#343842" : "rgba(22,24,29,0.12)",
+                  color: isDark ? "#F3F4F6" : TEAL,
                   fontFamily: FONT,
                   fontSize: "13px",
                   fontWeight: 700,
@@ -323,7 +299,8 @@ export default function AppNavbar({
                   width: 240,
                   mt: 1.5,
                   borderRadius: "14px",
-                  border: `1px solid ${BORDER}`,
+                  border: `1px solid ${isDark ? "#444852" : "#E2E2DE"}`,
+                  backgroundColor: isDark ? "#30343C" : "#FFFFFF",
                   boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
                   p: 1,
                 },
@@ -337,7 +314,7 @@ export default function AppNavbar({
                   fontFamily: FONT,
                   fontWeight: 700,
                   fontSize: "14px",
-                  color: INK,
+                  color: isDark ? "#F3F4F6" : INK,
                   lineHeight: 1.2,
                 }}
               >
@@ -347,7 +324,7 @@ export default function AppNavbar({
                 sx={{
                   fontFamily: FONT,
                   fontSize: "12px",
-                  color: MUTED,
+                  color: isDark ? "#A7ADB7" : MUTED,
                   mt: 0.4,
                   wordBreak: "break-all",
                 }}
@@ -362,7 +339,7 @@ export default function AppNavbar({
                   py: "2px",
                   borderRadius: "6px",
                   backgroundColor: "rgba(22,24,29,0.1)",
-                  color: TEAL,
+                  color: isDark ? "#F3F4F6" : TEAL,
                   fontFamily: FONT,
                   fontSize: "11px",
                   fontWeight: 600,
@@ -372,7 +349,7 @@ export default function AppNavbar({
               </Box>
             </Box>
 
-            <Divider sx={{ my: 0.8, borderColor: "#EBE8E1" }} />
+            <Divider sx={{ my: 0.8, borderColor: isDark ? "#343842" : "#EBE8E1" }} />
 
             {/* View Profile */}
             {currentUser?.has_employee_profile && (
@@ -385,9 +362,9 @@ export default function AppNavbar({
                   fontFamily: FONT,
                   fontSize: "13px",
                   fontWeight: 600,
-                  color: INK,
+                  color: isDark ? "#F3F4F6" : INK,
                   gap: 1.5,
-                  "&:hover": { backgroundColor: "#FAF9F6", color: TEAL },
+                  "&:hover": { backgroundColor: isDark ? "#252A33" : "#FAF9F6", color: TEAL },
                 }}
               >
                 <PersonOutlineRounded sx={{ fontSize: 18 }} />
@@ -407,7 +384,7 @@ export default function AppNavbar({
                 fontWeight: 600,
                 color: "#DC2626",
                 gap: 1.5,
-                "&:hover": { backgroundColor: "rgba(239,68,68,0.06)" },
+                "&:hover": { backgroundColor: isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.06)" },
               }}
             >
               <LogoutRounded sx={{ fontSize: 18 }} />

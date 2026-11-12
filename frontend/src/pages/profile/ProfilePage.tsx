@@ -45,10 +45,10 @@ import StatusChip from "../../components/employees/StatusChip";
 import ActionToast from "../../components/common/ActionToast";
 
 const FONT = "'Montserrat', sans-serif";
-const INK = "#16181D";
-const TEAL = "#16181D";
-const MUTED = "#6B6F76";
-const BORDER = "#DAD7CF";
+const INK = "var(--hrms-text)";
+const TEAL = "var(--hrms-text)";
+const MUTED = "var(--hrms-muted)";
+const BORDER = "var(--hrms-border)";
 
 const ALL_COUNTRIES: ICountry[] = Country.getAllCountries();
 
@@ -77,11 +77,11 @@ const fieldSx = {
   "& .MuiOutlinedInput-root": {
     minHeight: 48,
     borderRadius: "10px",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "var(--hrms-surface-alt)",
     fontFamily: FONT,
     fontSize: "13px",
     "& fieldset": { borderColor: BORDER },
-    "&:hover fieldset": { borderColor: "#A9A69D" },
+    "&:hover fieldset": { borderColor: "var(--hrms-control-border)" },
     "&.Mui-focused fieldset": { borderColor: TEAL, borderWidth: "1.5px" },
   },
 };
@@ -113,6 +113,9 @@ export default function ProfilePage() {
   const [, setProfileCompleted] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  // Personal details belong to the employee. HR / Admin only edit the
+  // company section on someone else's profile.
+  const editingPersonal = isEditing && isViewingSelf;
   const [saving, setSaving] = useState(false);
 
   // Edit form state
@@ -124,7 +127,7 @@ export default function ProfilePage() {
 
   // HR / Admin editing someone else: company fields + the choices for them
   const canEditCompany = isHR && !isViewingSelf;
-  const canEditProfile = isViewingSelf || isHR;
+  const canEditProfile = isViewingSelf || canEditCompany;
   const [lookups, setLookups] = useState<EmployeeLookups | null>(null);
   const [company, setCompany] = useState({
     department_id: "",
@@ -276,11 +279,11 @@ export default function ProfilePage() {
     e.preventDefault();
     setBanner(null);
 
-    // Frontend validations
+    // Frontend validations (personal details are only edited by the employee)
     const firstName = (formData.first_name || "").trim();
     const lastName = (formData.last_name || "").trim();
 
-    if (!firstName || !lastName) {
+    if (isViewingSelf && (!firstName || !lastName)) {
       setBanner({
         severity: "error",
         message: "First Name and Last Name cannot be empty or whitespace only.",
@@ -288,7 +291,7 @@ export default function ProfilePage() {
       return;
     }
 
-    if (formData.dob) {
+    if (isViewingSelf && formData.dob) {
       const today = new Date();
       const birth = new Date(formData.dob);
       if (birth > today) {
@@ -332,17 +335,14 @@ export default function ProfilePage() {
       pincode: formData.pincode?.trim() || null,
     };
 
-    // HR / Admin may also change the company details
-    const hrPayload = canEditCompany
-      ? {
-          ...payload,
-          department_id: company.department_id ? Number(company.department_id) : undefined,
-          designation_id: company.designation_id ? Number(company.designation_id) : undefined,
-          manager_id: company.manager_id ? Number(company.manager_id) : null,
-          employment_type: company.employment_type || undefined,
-          date_of_joining: company.date_of_joining || undefined,
-        }
-      : payload;
+    // HR / Admin change company details only, never personal ones
+    const hrPayload = {
+      department_id: company.department_id ? Number(company.department_id) : undefined,
+      designation_id: company.designation_id ? Number(company.designation_id) : undefined,
+      manager_id: company.manager_id ? Number(company.manager_id) : null,
+      employment_type: company.employment_type || undefined,
+      date_of_joining: company.date_of_joining || undefined,
+    };
 
     try {
       if (isViewingSelf) {
@@ -357,7 +357,9 @@ export default function ProfilePage() {
 
       setBanner({
         severity: "success",
-        message: "Profile updated successfully.",
+        message: isViewingSelf
+          ? "Profile updated successfully."
+          : "Company details updated successfully.",
       });
       setIsEditing(false);
     } catch (err: unknown) {
@@ -451,9 +453,9 @@ export default function ProfilePage() {
         sx={{
           p: { xs: 2.5, sm: 3.5 },
           borderRadius: "20px",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "var(--hrms-surface)",
           border: `1px solid ${BORDER}`,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
           display: "flex",
           flexDirection: { xs: "column", sm: "row" },
           alignItems: { xs: "flex-start", sm: "center" },
@@ -524,19 +526,19 @@ export default function ProfilePage() {
               onClick={handleStartEdit}
               sx={{
                 borderRadius: "10px",
-                backgroundColor: TEAL,
-                color: "#FFFFFF",
+                backgroundColor: "var(--hrms-btn-primary-bg)",
+                color: "var(--hrms-btn-primary-text)",
                 textTransform: "none",
                 fontFamily: FONT,
                 fontSize: "13px",
-                fontWeight: 600,
+                fontWeight: 650,
                 px: 2.5,
                 height: 42,
                 boxShadow: "none",
-                "&:hover": { backgroundColor: "#0C5F58" },
+                "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)", boxShadow: "none" },
               }}
             >
-              Edit Profile
+              {isViewingSelf ? "Edit Profile" : "Edit Company Details"}
             </Button>
           )}
 
@@ -572,7 +574,7 @@ export default function ProfilePage() {
             sx={{
               p: { xs: 2.5, md: 3.5 },
               borderRadius: "18px",
-              backgroundColor: "#FFFFFF",
+              backgroundColor: "var(--hrms-surface)",
               border: `1px solid ${BORDER}`,
               boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
             }}
@@ -583,12 +585,12 @@ export default function ProfilePage() {
                 Personal Information
               </Typography>
             </Box>
-            <Divider sx={{ mb: 2.5, borderColor: "#EBE8E1" }} />
+            <Divider sx={{ mb: 2.5, borderColor: "var(--hrms-border-subtle)" }} />
 
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2.5 }}>
               <Box>
                 <Typography sx={labelSx}>First Name</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <TextField
                     fullWidth
                     required
@@ -605,7 +607,7 @@ export default function ProfilePage() {
 
               <Box>
                 <Typography sx={labelSx}>Last Name</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <TextField
                     fullWidth
                     required
@@ -623,7 +625,7 @@ export default function ProfilePage() {
               {/* Phone */}
               <Box sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}>
                 <Typography sx={labelSx}>Phone Number</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <Box sx={{ display: "flex", gap: 1.2 }}>
                     <Autocomplete<ICountry, false, true>
                       disableClearable
@@ -664,7 +666,7 @@ export default function ProfilePage() {
               {/* Date of Birth */}
               <Box>
                 <Typography sx={labelSx}>Date of Birth</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <TextField
                     fullWidth
                     type="date"
@@ -681,7 +683,7 @@ export default function ProfilePage() {
 
               <Box>
                 <Typography sx={labelSx}>Official Email</Typography>
-                <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK, pt: isEditing ? 1.5 : 0 }}>
+                <Typography sx={{ fontFamily: FONT, fontSize: "14px", fontWeight: 600, color: INK, pt: editingPersonal ? 1.5 : 0 }}>
                   {profile.email}
                 </Typography>
               </Box>
@@ -693,7 +695,7 @@ export default function ProfilePage() {
             sx={{
               p: { xs: 2.5, md: 3.5 },
               borderRadius: "18px",
-              backgroundColor: "#FFFFFF",
+              backgroundColor: "var(--hrms-surface)",
               border: `1px solid ${BORDER}`,
               boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
             }}
@@ -704,12 +706,12 @@ export default function ProfilePage() {
                 Residential Address
               </Typography>
             </Box>
-            <Divider sx={{ mb: 2.5, borderColor: "#EBE8E1" }} />
+            <Divider sx={{ mb: 2.5, borderColor: "var(--hrms-border-subtle)" }} />
 
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2.5 }}>
               <Box sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}>
                 <Typography sx={labelSx}>Address Line 1</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <TextField
                     fullWidth
                     value={formData.address_line1 || ""}
@@ -726,7 +728,7 @@ export default function ProfilePage() {
 
               <Box sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}>
                 <Typography sx={labelSx}>Address Line 2 (Optional)</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <TextField
                     fullWidth
                     value={formData.address_line2 || ""}
@@ -743,7 +745,7 @@ export default function ProfilePage() {
 
               <Box>
                 <Typography sx={labelSx}>Country</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <Autocomplete<ICountry, false, false>
                     options={ALL_COUNTRIES}
                     value={selectedCountry}
@@ -761,7 +763,7 @@ export default function ProfilePage() {
 
               <Box>
                 <Typography sx={labelSx}>State</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <Autocomplete<IState, false, false>
                     options={states}
                     value={selectedState}
@@ -786,7 +788,7 @@ export default function ProfilePage() {
 
               <Box>
                 <Typography sx={labelSx}>City</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <Autocomplete
                     freeSolo
                     options={cityOptions}
@@ -810,7 +812,7 @@ export default function ProfilePage() {
 
               <Box>
                 <Typography sx={labelSx}>Pincode</Typography>
-                {isEditing ? (
+                {editingPersonal ? (
                   <TextField
                     fullWidth
                     value={formData.pincode || ""}
@@ -832,7 +834,7 @@ export default function ProfilePage() {
           sx={{
             p: { xs: 2.5, md: 3.5 },
             borderRadius: "18px",
-            backgroundColor: "#FFFFFF",
+            backgroundColor: "var(--hrms-surface)",
             border: `1px solid ${BORDER}`,
             boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
             mb: 4,
@@ -852,12 +854,13 @@ export default function ProfilePage() {
                 fontFamily: FONT,
                 fontSize: "11px",
                 fontWeight: 600,
-                backgroundColor: "#F0EFEB",
+                backgroundColor: "var(--hrms-surface-alt)",
                 color: MUTED,
+                border: "1px solid var(--hrms-border)",
               }}
             />
           </Box>
-          <Divider sx={{ mb: 2.5, borderColor: "#EBE8E1" }} />
+          <Divider sx={{ mb: 2.5, borderColor: "var(--hrms-border-subtle)" }} />
 
           <Box
             sx={{
@@ -1024,20 +1027,20 @@ export default function ProfilePage() {
                   height: 48,
                   px: 3.5,
                   borderRadius: "10px",
-                  backgroundColor: INK,
-                  color: "#FFFFFF",
+                  backgroundColor: "var(--hrms-btn-primary-bg)",
+                  color: "var(--hrms-btn-primary-text)",
                   textTransform: "none",
                   fontFamily: FONT,
-                  fontWeight: 600,
+                  fontWeight: 650,
                   fontSize: "14px",
                   boxShadow: "none",
-                  "&:hover": { backgroundColor: "#2B2F38" },
+                  "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)", boxShadow: "none" },
                 }}
               >
-                {saving ? <CircularProgress size={18} sx={{ color: "#FFFFFF" }} /> : "Save Changes"}
+                {saving ? <CircularProgress size={18} sx={{ color: "var(--hrms-btn-primary-text)" }} /> : "Save Changes"}
               </Button>
             </>
-          ) : (
+          ) : canEditProfile ? (
             <Button
               variant="contained"
               startIcon={<EditOutlined />}
@@ -1046,19 +1049,19 @@ export default function ProfilePage() {
                 height: 48,
                 px: 3.5,
                 borderRadius: "10px",
-                backgroundColor: TEAL,
-                color: "#FFFFFF",
+                backgroundColor: "var(--hrms-btn-primary-bg)",
+                color: "var(--hrms-btn-primary-text)",
                 textTransform: "none",
                 fontFamily: FONT,
-                fontWeight: 600,
+                fontWeight: 650,
                 fontSize: "14px",
                 boxShadow: "none",
-                "&:hover": { backgroundColor: "#0C5F58" },
+                "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)", boxShadow: "none" },
               }}
             >
-              Edit Profile
+              {isViewingSelf ? "Edit Profile" : "Edit Company Details"}
             </Button>
-          )}
+          ) : null}
         </Box>
       </Box>
 
@@ -1066,9 +1069,9 @@ export default function ProfilePage() {
       <Dialog
         open={resetDialogOpen}
         onClose={() => !resettingPassword && setResetDialogOpen(false)}
-        slotProps={{ paper: { sx: { borderRadius: "16px", p: 1, maxWidth: 440 } } }}
+        slotProps={{ paper: { sx: { borderRadius: "16px", p: 1, maxWidth: 440, backgroundColor: "var(--hrms-surface)", color: "var(--hrms-text)", backgroundImage: "none" } } }}
       >
-        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.5, pb: 1 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.5, pb: 1, backgroundColor: "var(--hrms-surface)", color: "var(--hrms-text)" }}>
           <Box
             sx={{
               width: 40,
@@ -1088,7 +1091,7 @@ export default function ProfilePage() {
           </Typography>
         </DialogTitle>
 
-        <DialogContent sx={{ py: 1 }}>
+        <DialogContent sx={{ py: 1, backgroundColor: "var(--hrms-surface)", color: "var(--hrms-text)" }}>
           <Typography sx={{ fontFamily: FONT, fontSize: "13px", color: MUTED, lineHeight: 1.6 }}>
             Are you sure you want to reset the password for{" "}
             <strong style={{ color: INK }}>{fullName}</strong> ({profile.email})?
@@ -1099,7 +1102,7 @@ export default function ProfilePage() {
           </Typography>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1 }}>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1, gap: 1, backgroundColor: "var(--hrms-surface)" }}>
           <Button
             onClick={() => setResetDialogOpen(false)}
             disabled={resettingPassword}
@@ -1115,15 +1118,17 @@ export default function ProfilePage() {
             sx={{
               textTransform: "none",
               fontFamily: FONT,
-              fontWeight: 600,
+              fontWeight: 650,
               borderRadius: "10px",
               px: 2.5,
-              backgroundColor: INK,
-              "&:hover": { backgroundColor: "#2B2F38" },
+              backgroundColor: "var(--hrms-btn-primary-bg)",
+              color: "var(--hrms-btn-primary-text)",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "var(--hrms-btn-primary-hover)", boxShadow: "none" },
             }}
           >
             {resettingPassword ? (
-              <CircularProgress size={18} sx={{ color: "#FFFFFF" }} />
+              <CircularProgress size={18} sx={{ color: "var(--hrms-btn-primary-text)" }} />
             ) : (
               "Confirm Reset Password"
             )}

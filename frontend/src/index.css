@@ -1,31 +1,473 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 
-* {
-  box-sizing: border-box;
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; min-height: 100%; }
+body { font-family: 'Montserrat', sans-serif; background: #F5F4F0; }
+
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --hrms-page:           #F5F4F0;
+  --hrms-nav:            #F8F8F7;
+  --hrms-surface:        #FFFFFF;
+  --hrms-surface-alt:    #FAF9F6;
+  --hrms-surface-alt2:   #F0EFEB;
+  --hrms-text:           #16181D;
+  --hrms-muted:          #6B6F76;
+  --hrms-border:         #DAD7CF;
+  --hrms-border-subtle:  #ECEAE5;
+  --hrms-control:        #FFFFFF;
+  --hrms-control-border: #DAD7CF;
+  --hrms-focus:          #343741;
+  --hrms-hover:          rgba(0, 0, 0, 0.04);
+  --hrms-chip-bg:        #F5F4F0;
+  --hrms-chip-dark:      rgba(22,24,29,0.12);
+  --hrms-btn-primary-bg:    #16181D;
+  --hrms-btn-primary-text:  #FFFFFF;
+  --hrms-btn-primary-border: #16181D;
+  --hrms-btn-primary-hover: #2B2F38;
 }
 
-html,
-body,
-#root {
-  margin: 0;
-  min-height: 100%;
+/* ============================================================
+   DARK MODE TOKENS
+   ============================================================ */
+:root[data-theme-mode="dark"],
+body[data-theme-mode="dark"] {
+  color-scheme: dark;
+  --hrms-page:           #1E2026;
+  --hrms-nav:            #252830;
+  --hrms-surface:        #2C2F36;
+  --hrms-surface-alt:    #252830;
+  --hrms-surface-alt2:   #1E2026;
+  --hrms-text:           #F0F0EE;
+  --hrms-muted:          #9DA0A8;
+  --hrms-border:         #3E434D;
+  --hrms-border-subtle:  #353940;
+  --hrms-control:        #353940;
+  --hrms-control-border: #4E5460;
+  --hrms-focus:          #C8CBD2;
+  --hrms-hover:          rgba(255, 255, 255, 0.06);
+  --hrms-chip-bg:        #353940;
+  --hrms-chip-dark:      rgba(255, 255, 255, 0.12);
+  --hrms-btn-primary-bg:    #2C303A;
+  --hrms-btn-primary-text:  #FFFFFF;
+  --hrms-btn-primary-border: #4A5060;
+  --hrms-btn-primary-hover: #3A3F4C;
+  background: var(--hrms-page);
+  color: var(--hrms-text);
 }
 
-body {
-  font-family: 'Montserrat', sans-serif;
-  background: #f5f4f0;
+/* ============================================================
+   BASE BODY & ROOT
+   ============================================================ */
+body, #root {
+  background-color: var(--hrms-page);
+  color: var(--hrms-text);
 }
-/* Neutral charcoal outlines for form controls; preserve explicit validation errors. */
+
+/* ============================================================
+   INPUT & BUTTON BASE
+   ============================================================ */
 .MuiOutlinedInput-root:not(.Mui-error):hover .MuiOutlinedInput-notchedOutline {
-  border-color: #16181D;
+  border-color: var(--hrms-control-border);
 }
 .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline {
-  border-color: #16181D;
-  border-width: 1.5px;
+  border-color: var(--hrms-focus); border-width: 1.5px;
 }
-.MuiButton-outlined {
-  border-color: #16181D;
+.MuiButton-outlined { border-color: var(--hrms-control-border); }
+.MuiButton-outlined:hover { border-color: var(--hrms-focus); }
+
+/* Primary contained buttons: sleek dark-themed in dark mode, crisp dark in light mode */
+body[data-theme-mode="dark"] .MuiButton-contained:not(.MuiButton-containedSecondary):not(.MuiButton-containedError):not(.MuiButton-containedSuccess):not(.MuiButton-containedWarning):not(.MuiButton-containedInfo) {
+  background-color: var(--hrms-btn-primary-bg) !important;
+  color: var(--hrms-btn-primary-text) !important;
+  border: 1px solid var(--hrms-btn-primary-border) !important;
+  box-shadow: none !important;
 }
-.MuiButton-outlined:hover {
-  border-color: #16181D;
+body[data-theme-mode="dark"] .MuiButton-contained:not(.MuiButton-containedSecondary):not(.MuiButton-containedError):not(.MuiButton-containedSuccess):not(.MuiButton-containedWarning):not(.MuiButton-containedInfo):hover {
+  background-color: var(--hrms-btn-primary-hover) !important;
+  border-color: #5C6275 !important;
+  box-shadow: none !important;
+}
+
+/* Buttons inside tables in dark mode */
+body[data-theme-mode="dark"] .MuiTableCell-root .MuiButton-root {
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiTableCell-root .MuiIconButton-root {
+  color: var(--hrms-muted) !important;
+  border-color: var(--hrms-border) !important;
+}
+body[data-theme-mode="dark"] .MuiTableCell-root .MuiIconButton-root:hover {
+  color: var(--hrms-text) !important;
+  border-color: var(--hrms-control-border) !important;
+  background-color: var(--hrms-hover) !important;
+}
+
+/* ============================================================
+   DARK MODE: SURFACE OVERRIDES
+   All Paper, Card, Dialog, Popover, Menu
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiPaper-root,
+body[data-theme-mode="dark"] .MuiMenu-paper,
+body[data-theme-mode="dark"] .MuiDialog-paper,
+body[data-theme-mode="dark"] .MuiPopover-paper,
+body[data-theme-mode="dark"] .MuiCard-root {
+  background-color: var(--hrms-surface) !important;
+  color: var(--hrms-text) !important;
+  border-color: var(--hrms-border) !important;
+}
+
+/* ============================================================
+   DARK MODE: ALL TEXT OVERRIDES (most important!)
+   Target Typography, headings, paragraphs
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiTypography-root,
+body[data-theme-mode="dark"] h1,
+body[data-theme-mode="dark"] h2,
+body[data-theme-mode="dark"] h3,
+body[data-theme-mode="dark"] h4,
+body[data-theme-mode="dark"] h5,
+body[data-theme-mode="dark"] h6,
+body[data-theme-mode="dark"] p,
+body[data-theme-mode="dark"] span {
+  color: inherit;
+}
+
+/* Force MUI Typography that has hardcoded dark text colors from sx props */
+body[data-theme-mode="dark"] .MuiTypography-root[class] {
+  color: var(--hrms-text);
+}
+
+/* Ensure Typography inside buttons, list items, chips, and menu items inherits the intended color */
+body[data-theme-mode="dark"] .MuiButton-root .MuiTypography-root,
+body[data-theme-mode="dark"] .MuiButtonBase-root .MuiTypography-root,
+body[data-theme-mode="dark"] .MuiListItemButton-root .MuiTypography-root,
+body[data-theme-mode="dark"] .MuiMenuItem-root .MuiTypography-root,
+body[data-theme-mode="dark"] .MuiChip-root .MuiTypography-root {
+  color: inherit !important;
+}
+
+/* Text selections (mouse highlight) */
+::selection {
+  background-color: rgba(22, 24, 29, 0.2);
+  color: inherit;
+}
+body[data-theme-mode="dark"] ::selection {
+  background-color: rgba(255, 255, 255, 0.24);
+  color: #FFFFFF;
+}
+
+/* Muted text: secondary-looking Typography */
+body[data-theme-mode="dark"] .MuiTypography-colorTextSecondary {
+  color: var(--hrms-muted) !important;
+}
+
+/* ============================================================
+   DARK MODE: DIALOG
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiDialogTitle-root {
+  background-color: var(--hrms-surface) !important;
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiDialogTitle-root * {
+  color: inherit;
+}
+body[data-theme-mode="dark"] .MuiDialogContent-root,
+body[data-theme-mode="dark"] .MuiDialogActions-root {
+  background-color: var(--hrms-surface) !important;
+  color: var(--hrms-text) !important;
+}
+
+/* ============================================================
+   DARK MODE: FORM LABELS & INPUTS
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiFormLabel-root,
+body[data-theme-mode="dark"] .MuiInputLabel-root,
+body[data-theme-mode="dark"] .MuiFormControlLabel-label,
+body[data-theme-mode="dark"] label {
+  color: var(--hrms-text) !important;
+}
+
+body[data-theme-mode="dark"] .MuiFormHelperText-root,
+body[data-theme-mode="dark"] .MuiInputAdornment-root,
+body[data-theme-mode="dark"] .MuiInputAdornment-root svg {
+  color: var(--hrms-muted) !important;
+}
+
+body[data-theme-mode="dark"] .MuiOutlinedInput-root,
+body[data-theme-mode="dark"] .MuiInputBase-root,
+body[data-theme-mode="dark"] .MuiSelect-select,
+body[data-theme-mode="dark"] .MuiNativeSelect-select,
+body[data-theme-mode="dark"] input,
+body[data-theme-mode="dark"] textarea {
+  background-color: var(--hrms-control) !important;
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiSelect-icon {
+  color: var(--hrms-muted) !important;
+}
+
+body[data-theme-mode="dark"] input::placeholder,
+body[data-theme-mode="dark"] textarea::placeholder {
+  color: var(--hrms-muted) !important;
+  opacity: 1;
+}
+
+body[data-theme-mode="dark"] .MuiOutlinedInput-notchedOutline {
+  border-color: var(--hrms-control-border) !important;
+}
+
+/* ============================================================
+   DARK MODE: MENU ITEMS
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiMenuItem-root {
+  color: var(--hrms-text) !important;
+  background-color: var(--hrms-surface) !important;
+}
+body[data-theme-mode="dark"] .MuiMenuItem-root:hover {
+  background-color: var(--hrms-hover) !important;
+}
+body[data-theme-mode="dark"] .MuiMenuItem-root.Mui-selected {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #FFFFFF !important;
+  font-weight: 650 !important;
+}
+body[data-theme-mode="dark"] .MuiMenuItem-root.Mui-selected:hover {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  color: #FFFFFF !important;
+}
+body[data-theme-mode="dark"] .MuiTab-root.Mui-selected {
+  color: #FFFFFF !important;
+}
+
+/* ============================================================
+   DARK MODE: MISC ELEMENTS
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiDivider-root {
+  border-color: var(--hrms-border) !important;
+}
+body[data-theme-mode="dark"] .MuiButton-text {
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiCheckbox-root,
+body[data-theme-mode="dark"] .MuiRadio-root,
+body[data-theme-mode="dark"] .MuiSwitch-root {
+  color: #D3D5DA !important;
+}
+body[data-theme-mode="dark"] .MuiIconButton-root {
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiIconButton-root:hover {
+  background-color: var(--hrms-hover) !important;
+}
+
+/* ============================================================
+   DARK MODE: TABLE
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiTableContainer-root,
+body[data-theme-mode="dark"] .MuiTable-root {
+  background-color: var(--hrms-surface) !important;
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiTableHead-root,
+body[data-theme-mode="dark"] .MuiTableHead-root .MuiTableRow-root,
+body[data-theme-mode="dark"] .MuiTableCell-head {
+  background-color: var(--hrms-surface-alt) !important;
+  color: var(--hrms-muted) !important;
+  border-bottom-color: var(--hrms-border) !important;
+}
+body[data-theme-mode="dark"] .MuiTableCell-body {
+  color: var(--hrms-text) !important;
+  border-bottom-color: var(--hrms-border-subtle) !important;
+}
+body[data-theme-mode="dark"] .MuiTableRow-root.MuiTableRow-hover:hover,
+body[data-theme-mode="dark"] .MuiTableBody-root .MuiTableRow-root:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+body[data-theme-mode="dark"] .MuiTablePagination-root {
+  background-color: var(--hrms-surface) !important;
+  color: var(--hrms-text) !important;
+  border-top-color: var(--hrms-border) !important;
+}
+body[data-theme-mode="dark"] .MuiTablePagination-selectLabel,
+body[data-theme-mode="dark"] .MuiTablePagination-displayedRows,
+body[data-theme-mode="dark"] .MuiTablePagination-select,
+body[data-theme-mode="dark"] .MuiTablePagination-actions,
+body[data-theme-mode="dark"] .MuiTableSortLabel-root,
+body[data-theme-mode="dark"] .MuiTableSortLabel-icon,
+body[data-theme-mode="dark"] .MuiTablePagination-selectIcon {
+  color: var(--hrms-text) !important;
+}
+
+/* ============================================================
+   DARK MODE: CHIP (Retain colored status & semantic chips)
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiChip-root:not([style*="color"]):not([style*="background"]) {
+  color: var(--hrms-text);
+  border-color: var(--hrms-border);
+}
+
+/* ============================================================
+   DARK MODE: AUTOCOMPLETE LISTBOX
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiAutocomplete-listbox,
+body[data-theme-mode="dark"] .MuiAutocomplete-paper {
+  background-color: var(--hrms-surface) !important;
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiAutocomplete-option {
+  color: var(--hrms-text) !important;
+}
+body[data-theme-mode="dark"] .MuiAutocomplete-option:hover,
+body[data-theme-mode="dark"] .MuiAutocomplete-option[aria-selected="true"] {
+  background-color: var(--hrms-hover) !important;
+}
+
+/* ============================================================
+   DARK MODE: TOOLTIP
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiTooltip-tooltip {
+  background-color: #454952 !important;
+  color: var(--hrms-text) !important;
+}
+
+/* ============================================================
+   DARK MODE: ALERT & TOASTS (Keep green, red, yellow, blue!)
+   ============================================================ */
+body[data-theme-mode="dark"] .MuiAlert-filledSuccess {
+  background-color: #065F46 !important;
+  color: #ECFDF5 !important;
+  border: 1px solid rgba(52, 211, 153, 0.4) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-filledError {
+  background-color: #7F1D1D !important;
+  color: #FEF2F2 !important;
+  border: 1px solid rgba(248, 113, 113, 0.4) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-filledWarning {
+  background-color: #78350F !important;
+  color: #FFFBEB !important;
+  border: 1px solid rgba(251, 191, 36, 0.4) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-filledInfo {
+  background-color: #1E3A8A !important;
+  color: #EFF6FF !important;
+  border: 1px solid rgba(96, 165, 250, 0.4) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-standardSuccess {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+  color: #34D399 !important;
+  border: 1px solid rgba(52, 211, 153, 0.35) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-standardError {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+  color: #F87171 !important;
+  border: 1px solid rgba(248, 113, 113, 0.35) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-standardWarning {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+  color: #FBBF24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.35) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-standardInfo {
+  background-color: rgba(59, 130, 246, 0.14) !important;
+  color: #60A5FA !important;
+  border: 1px solid rgba(96, 165, 250, 0.35) !important;
+}
+body[data-theme-mode="dark"] .MuiAlert-icon {
+  color: inherit !important;
+}
+
+/* ============================================================
+   DARK MODE: SCROLLBAR
+   ============================================================ */
+body[data-theme-mode="dark"] ::-webkit-scrollbar { width: 7px; height: 7px; }
+body[data-theme-mode="dark"] ::-webkit-scrollbar-track { background: var(--hrms-page); }
+body[data-theme-mode="dark"] ::-webkit-scrollbar-thumb { background: var(--hrms-border); border-radius: 4px; }
+
+/* ============================================================
+   DARK MODE: GLOBAL INLINE STYLE OVERRIDES
+   These catch hardcoded backgroundColor/color in sx props
+   which React converts to inline styles.
+   ============================================================ */
+
+/* --- White / near-white backgrounds -> surface --- */
+body[data-theme-mode="dark"] [style*="background-color: rgb(255, 255, 255)"],
+body[data-theme-mode="dark"] [style*="background-color: #ffffff"],
+body[data-theme-mode="dark"] [style*="background-color: #FFFFFF"],
+body[data-theme-mode="dark"] [style*="background-color: #fff"],
+body[data-theme-mode="dark"] [style*="background-color: #FFF"],
+body[data-theme-mode="dark"] [style*="background: rgb(255, 255, 255)"],
+body[data-theme-mode="dark"] [style*="background: #ffffff"],
+body[data-theme-mode="dark"] [style*="background: #FFFFFF"],
+body[data-theme-mode="dark"] [style*="background: #fff"],
+body[data-theme-mode="dark"] [style*="background: #FFF"] {
+  background-color: var(--hrms-surface) !important;
+  color: var(--hrms-text) !important;
+}
+
+/* --- Slightly off-white (#FAF9F6, #F5F4F0, #F0EFEB) -> surface-alt --- */
+body[data-theme-mode="dark"] [style*="background-color: rgb(250, 249, 246)"],
+body[data-theme-mode="dark"] [style*="background-color: #faf9f6"],
+body[data-theme-mode="dark"] [style*="background-color: #FAF9F6"],
+body[data-theme-mode="dark"] [style*="background: rgb(250, 249, 246)"],
+body[data-theme-mode="dark"] [style*="background: #faf9f6"],
+body[data-theme-mode="dark"] [style*="background: #FAF9F6"],
+body[data-theme-mode="dark"] [style*="background-color: rgb(245, 244, 240)"],
+body[data-theme-mode="dark"] [style*="background-color: #f5f4f0"],
+body[data-theme-mode="dark"] [style*="background-color: #F5F4F0"],
+body[data-theme-mode="dark"] [style*="background: rgb(245, 244, 240)"],
+body[data-theme-mode="dark"] [style*="background: #f5f4f0"],
+body[data-theme-mode="dark"] [style*="background: #F5F4F0"],
+body[data-theme-mode="dark"] [style*="background-color: rgb(240, 239, 235)"],
+body[data-theme-mode="dark"] [style*="background-color: #f0efeb"],
+body[data-theme-mode="dark"] [style*="background-color: #F0EFEB"],
+body[data-theme-mode="dark"] [style*="background: rgb(240, 239, 235)"],
+body[data-theme-mode="dark"] [style*="background: #f0efeb"],
+body[data-theme-mode="dark"] [style*="background: #F0EFEB"],
+body[data-theme-mode="dark"] [style*="background-color: rgb(232, 231, 227)"],
+body[data-theme-mode="dark"] [style*="background-color: #E8E7E3"],
+body[data-theme-mode="dark"] [style*="background: #E8E7E3"] {
+  background-color: var(--hrms-surface-alt) !important;
+  color: var(--hrms-text) !important;
+}
+
+/* --- Semi-transparent white overlays -> dark equivalent --- */
+body[data-theme-mode="dark"] [style*="background: rgba(255, 255, 255"],
+body[data-theme-mode="dark"] [style*="background-color: rgba(255, 255, 255"] {
+  background-color: rgba(61, 65, 73, 0.75) !important;
+}
+
+/* --- Semi-transparent dark overlays (rgba(22,24,29,...)) -> invert --- */
+body[data-theme-mode="dark"] [style*="background-color: rgba(22, 24, 29,"],
+body[data-theme-mode="dark"] [style*="background: rgba(22, 24, 29,"] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* --- Hardcoded dark text (#16181D, #202127) -> hrms-text (light in dark mode) --- */
+body[data-theme-mode="dark"] [style*="color: rgb(22, 24, 29)"],
+body[data-theme-mode="dark"] [style*="color: #16181d"],
+body[data-theme-mode="dark"] [style*="color: #16181D"],
+body[data-theme-mode="dark"] [style*="color: rgb(32, 33, 39)"],
+body[data-theme-mode="dark"] [style*="color: #202127"] {
+  color: var(--hrms-text) !important;
+}
+
+/* --- Hardcoded muted text (#6B6F76) -> dark muted --- */
+body[data-theme-mode="dark"] [style*="color: rgb(107, 111, 118)"],
+body[data-theme-mode="dark"] [style*="color: #6b6f76"],
+body[data-theme-mode="dark"] [style*="color: #6B6F76"] {
+  color: var(--hrms-muted) !important;
+}
+
+/* --- Hardcoded borders --- */
+body[data-theme-mode="dark"] [style*="border-color: rgb(218, 215, 207)"],
+body[data-theme-mode="dark"] [style*="border-color: #dad7cf"],
+body[data-theme-mode="dark"] [style*="border-color: #DAD7CF"],
+body[data-theme-mode="dark"] [style*="border: 1px solid rgb(218, 215, 207)"],
+body[data-theme-mode="dark"] [style*="border: 1px solid #dad7cf"],
+body[data-theme-mode="dark"] [style*="border: 1px solid #DAD7CF"] {
+  border-color: var(--hrms-border) !important;
 }

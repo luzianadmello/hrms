@@ -1,4 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Alert,
   Box,
@@ -75,11 +78,31 @@ const labelSx = {
   mb: 1,
 };
 
+const loginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
 function Login() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
   const [showPassword, setShowPassword] =
     useState(false);
@@ -87,18 +110,14 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
+  const onSubmit = async (values: LoginFormValues) => {
     setError("");
     setLoading(true);
 
     try {
       const response = await api.post("/auth/login", {
-        email: email.trim().toLowerCase(),
-        password,
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
       });
 
       const {
@@ -280,7 +299,8 @@ function Login() {
 
         <Box
           component="form"
-          onSubmit={handleSubmit}
+          noValidate
+          onSubmit={handleSubmit(onSubmit)}
         >
           {/* Email */}
 
@@ -298,14 +318,12 @@ function Login() {
           <TextField
             id="email"
             fullWidth
-            required
             type="email"
             placeholder="you@company.com"
-            value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
             autoComplete="email"
+            error={!!errors.email}
+            helperText={errors.email?.message}
+            {...register("email")}
             autoFocus
             disabled={loading}
             sx={{
@@ -339,18 +357,16 @@ function Login() {
           <TextField
             id="password"
             fullWidth
-            required
             type={
               showPassword
                 ? "text"
                 : "password"
             }
             placeholder="Enter your password"
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
             autoComplete="current-password"
+            error={!!errors.password}
+            helperText={errors.password?.message}
+            {...register("password")}
             disabled={loading}
             sx={{
               ...fieldSx,
@@ -402,11 +418,7 @@ function Login() {
             type="submit"
             fullWidth
             disableElevation
-            disabled={
-              loading ||
-              !email ||
-              !password
-            }
+            disabled={loading}
             sx={{
               height: 50,
               borderRadius: "10px",

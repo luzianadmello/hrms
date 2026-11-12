@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   Chip,
   Divider,
   Drawer,
@@ -15,16 +14,27 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import { useState } from "react";
 import {
   CloseRounded,
   ChevronLeftRounded,
-  ChevronRightRounded,
   DashboardRounded,
   GroupsRounded,
-  LogoutRounded,
+  AccessTimeRounded,
+  BusinessRounded,
+  ExpandMoreRounded,
+  ChevronRightRounded as ChevronRightIcon,
+  ApartmentRounded,
+  WorkOutlineRounded,
+  HistoryRounded,
+  CalendarMonthRounded,
+  SettingsRounded,
+  BeachAccessRounded,
+  EventAvailableRounded,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getRoleLabel, isEmployeeView, isTeamViewOnly } from "../../utils/permissions";
+import { canAny, getRoleLabel, isEmployeeView, isTeamViewOnly } from "../../utils/permissions";
+import { useThemeMode } from "../../contexts/ThemeModeContext";
 
 const FONT = "'Montserrat', sans-serif";
 const INK = "#16181D";
@@ -38,8 +48,6 @@ interface DashboardSidebarProps {
   mobileOpen: boolean;
   onMobileClose: () => void;
   userRoleName?: string;
-  onLogout: () => void;
-  loggingOut?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -48,12 +56,12 @@ export default function DashboardSidebar({
   mobileOpen,
   onMobileClose,
   userRoleName,
-  onLogout,
-  loggingOut = false,
   collapsed,
   onToggleCollapse,
 }: DashboardSidebarProps) {
   const theme = useTheme();
+  const { mode } = useThemeMode();
+  const isDark = mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,13 +69,17 @@ export default function DashboardSidebar({
   const isManager = isTeamViewOnly();
   const compact = collapsed && !isMobile;
   const currentRoleLabel = userRoleName || getRoleLabel() || "Employee";
+  const [organizationOpen, setOrganizationOpen] = useState(location.pathname.startsWith("/organization"));
+  const [attendanceOpen, setAttendanceOpen] = useState(location.pathname.startsWith("/attendance"));
+  const [leaveOpen, setLeaveOpen] = useState(location.pathname.startsWith("/leave"));
+  const canViewOrganization = canAny("department.view", "designation.view");
 
   const handleNavClick = (path: string) => {
     navigate(path);
     if (isMobile) onMobileClose();
   };
 
-  const navItems = isEmployee
+  const baseNavItems = isEmployee
     ? [{ path: "/dashboard", label: "My Dashboard", icon: <DashboardRounded sx={{ fontSize: 20 }} /> }]
     : isManager
       ? [
@@ -79,6 +91,25 @@ export default function DashboardSidebar({
           { path: "/employees", label: "Employees", icon: <GroupsRounded sx={{ fontSize: 20 }} /> },
         ];
 
+  const navItems = [...baseNavItems];
+  const canViewLeave = canAny(
+    "leave_request.view_own", "leave_request.view_team", "leave_request.view_all",
+    "leave_balance.view_own", "leave_balance.view_all", "leave_type.view",
+  );
+  const canViewHolidays = canAny("holiday.view");
+  if (canViewHolidays) navItems.push({ path: "/holidays", label: "Holiday Management", icon: <EventAvailableRounded sx={{ fontSize: 20 }} /> });
+  const canViewAttendance = canAny("attendance.view_own", "attendance.view_all", "attendance.view_policy");
+  const attendanceChildren = [
+    ...(canAny("attendance.view_own") ? [{ path: "/attendance/my-attendance", label: "My Attendance", icon: <HistoryRounded sx={{ fontSize: 17 }} /> }] : []),
+    ...(canAny("attendance.view_all") ? [{ path: "/attendance/employees", label: "Employee Attendance", icon: <GroupsRounded sx={{ fontSize: 17 }} /> }, { path: "/attendance/reports", label: "Reports", icon: <CalendarMonthRounded sx={{ fontSize: 17 }} /> }] : []),
+    ...(canAny("attendance.view_policy") ? [{ path: "/attendance/settings", label: "Settings", icon: <SettingsRounded sx={{ fontSize: 17 }} /> }] : []),
+  ];
+  const leaveChildren = [
+    ...(canAny("leave_request.view_own", "leave_request.view_team", "leave_request.view_all") ? [{ path: "/leave", section: "requests", label: canAny("leave_request.view_own") ? "My Requests" : canAny("leave_request.review") ? "Approvals" : "Leave Requests", icon: <BeachAccessRounded sx={{ fontSize: 17 }} /> }] : []),
+    ...(canAny("leave_balance.view_own", "leave_balance.view_all") ? [{ path: "/leave?section=balances", section: "balances", label: "Leave Balances", icon: <CalendarMonthRounded sx={{ fontSize: 17 }} /> }] : []),
+    ...(canAny("leave_type.manage") ? [{ path: "/leave?section=types", section: "types", label: "Leave Types", icon: <SettingsRounded sx={{ fontSize: 17 }} /> }] : []),
+  ];
+
   const sidebarContent = (
     <Box
       sx={{
@@ -87,8 +118,9 @@ export default function DashboardSidebar({
         height: "100%",
         width: "100%",
         boxSizing: "border-box",
-        backgroundColor: "#FAF9F6",
-        borderRight: `1px solid ${BORDER}`,
+        backgroundColor: isDark ? "#2B2E35" : "#F8F8F7",
+        color: isDark ? "#F3F4F6" : INK,
+        borderRight: `1px solid ${isDark ? "#444852" : "#E2E2DE"}`,
         p: compact ? 1.25 : 2.5,
         overflowX: "hidden",
         transition: "padding 0.18s ease",
@@ -104,10 +136,15 @@ export default function DashboardSidebar({
           gap: 1,
         }}
       >
-        <Box
-          onClick={() => handleNavClick("/dashboard")}
-          sx={{ display: "flex", alignItems: "center", gap: 1.5, cursor: "pointer", minWidth: 0 }}
-        >
+        <Tooltip title={compact ? "Expand sidebar" : "Go to dashboard"} placement="right">
+          <Box
+            onClick={() => compact ? onToggleCollapse() : handleNavClick("/dashboard")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => { if (compact && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onToggleCollapse(); } }}
+            aria-label={compact ? "Expand sidebar" : "Go to dashboard"}
+            sx={{ display: "flex", alignItems: "center", gap: 1.5, cursor: "pointer", minWidth: 0, outlineOffset: 3 }}
+          >
           <Box
             sx={{
               width: 36,
@@ -126,40 +163,35 @@ export default function DashboardSidebar({
           >H</Box>
           {!compact && (
             <Box>
-              <Typography sx={{ fontFamily: FONT, fontSize: "16px", fontWeight: 700, color: INK, letterSpacing: "-0.4px", lineHeight: 1.2 }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: "16px", fontWeight: 700, color: isDark ? "#F3F4F6" : INK, letterSpacing: "-0.4px", lineHeight: 1.2 }}>
                 HRMS
               </Typography>
-              <Typography sx={{ fontFamily: FONT, fontSize: "11px", color: MUTED, fontWeight: 500 }}>
+              <Typography sx={{ fontFamily: FONT, fontSize: "11px", color: isDark ? "#A7ADB7" : MUTED, fontWeight: 500 }}>
                 Workspace Portal
               </Typography>
             </Box>
           )}
-        </Box>
+          </Box>
+        </Tooltip>
 
-        {!isMobile && (
-          <Tooltip title={compact ? "Expand sidebar" : "Collapse sidebar"}>
+        {!isMobile && !compact && (
+          <Tooltip title="Collapse sidebar">
             <IconButton
               onClick={onToggleCollapse}
               size="small"
-              aria-label={compact ? "Expand sidebar" : "Collapse sidebar"}
-              sx={{ color: INK, border: `1px solid ${BORDER}`, borderRadius: "8px", flexShrink: 0 }}
+              aria-label="Collapse sidebar"
+              sx={{ color: isDark ? "#D4D8E0" : INK, border: `1px solid ${isDark ? "#414651" : BORDER}`, borderRadius: "8px", flexShrink: 0, width: 30, height: 30, "&:hover": { backgroundColor: isDark ? "#41454F" : "#F0F0ED" } }}
             >
-              {compact ? <ChevronRightRounded /> : <ChevronLeftRounded />}
+              <ChevronLeftRounded sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
         )}
         {isMobile && (
-          <IconButton onClick={onMobileClose} size="small" sx={{ color: MUTED }} aria-label="Close navigation">
+          <IconButton onClick={onMobileClose} size="small" sx={{ color: isDark ? "#A7ADB7" : MUTED }} aria-label="Close navigation">
             <CloseRounded />
           </IconButton>
         )}
       </Box>
-
-      {!compact && (
-        <Typography sx={{ fontFamily: FONT, fontSize: "11px", fontWeight: 700, color: INK, textTransform: "uppercase", letterSpacing: "0.8px", mb: 1.5, px: 1.5 }}>
-          Navigation
-        </Typography>
-      )}
 
       <Box sx={{ flex: 1, overflowY: "auto", overflowX: "hidden", pr: 0.25 }}>
         <List disablePadding>
@@ -171,24 +203,35 @@ export default function DashboardSidebar({
               <ListItemButton
                 onClick={() => handleNavClick(item.path)}
                 sx={{
-                  minHeight: 44,
+                  minHeight: 43,
                   borderRadius: "10px",
-                  py: 1.2,
-                  px: compact ? 1.3 : 1.8,
+                  py: 1.05,
+                  px: compact ? 1.3 : 1.55,
                   justifyContent: compact ? "center" : "flex-start",
-                  backgroundColor: active ? "rgba(22,24,29,0.12)" : "transparent",
-                  color: active ? INK : INK,
-                  transition: "all 0.15s ease",
-                  "&:hover": { backgroundColor: active ? "rgba(22,24,29,0.16)" : "rgba(0,0,0,0.04)" },
+                  backgroundColor: active
+                    ? (isDark ? "rgba(255, 255, 255, 0.12)" : INK)
+                    : "transparent",
+                  color: active
+                    ? "#FFFFFF"
+                    : (isDark ? "#A7ADB7" : MUTED),
+                  border: active && isDark ? "1px solid rgba(255, 255, 255, 0.14)" : "1px solid transparent",
+                  transition: "background-color 160ms ease, color 160ms ease, transform 160ms ease",
+                  "&:hover": {
+                    backgroundColor: active
+                      ? (isDark ? "rgba(255, 255, 255, 0.16)" : "#30333A")
+                      : (isDark ? "rgba(255, 255, 255, 0.06)" : "#F0F0ED"),
+                    color: isDark ? "#FFFFFF" : INK,
+                    transform: "translateX(1px)",
+                  },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: compact ? 0 : 34, justifyContent: "center", color: active ? INK : MUTED }}>
+                <ListItemIcon sx={{ minWidth: compact ? 0 : 34, justifyContent: "center", color: active ? "#FFFFFF !important" : (isDark ? "#A7ADB7 !important" : `${MUTED} !important`) }}>
                   {item.icon}
                 </ListItemIcon>
                 {!compact && (
                   <ListItemText
                     primary={
-                      <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: active ? 700 : 500, color: INK }}>
+                      <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: active ? 650 : 500, color: "inherit !important" }}>
                         {item.label}
                       </Typography>
                     }
@@ -202,48 +245,217 @@ export default function DashboardSidebar({
               </ListItem>
             );
           })}
+          {canViewLeave && (
+            <>
+              <ListItem disablePadding sx={{ mb: 0.6 }}>
+                <ListItemButton
+                  onClick={() => compact ? handleNavClick("/leave") : setLeaveOpen((open) => !open)}
+                  sx={{
+                    minHeight: 43, borderRadius: "10px", py: 1.05, px: compact ? 1.3 : 1.55,
+                    justifyContent: compact ? "center" : "flex-start",
+                    backgroundColor: location.pathname.startsWith("/leave") ? (isDark ? "rgba(255, 255, 255, 0.12)" : INK) : "transparent",
+                    color: location.pathname.startsWith("/leave") ? "#FFFFFF" : (isDark ? "#A7ADB7" : MUTED),
+                    border: location.pathname.startsWith("/leave") && isDark ? "1px solid rgba(255, 255, 255, 0.14)" : "1px solid transparent",
+                    transition: "background-color 160ms ease, color 160ms ease",
+                    "&:hover": { backgroundColor: location.pathname.startsWith("/leave") ? (isDark ? "rgba(255, 255, 255, 0.16)" : "#30333A") : (isDark ? "rgba(255, 255, 255, 0.06)" : "#F0F0ED"), color: isDark ? "#FFFFFF" : INK },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: compact ? 0 : 34, justifyContent: "center", color: location.pathname.startsWith("/leave") ? "#FFFFFF !important" : (isDark ? "#A7ADB7 !important" : `${MUTED} !important`) }}><BeachAccessRounded sx={{ fontSize: 20 }} /></ListItemIcon>
+                  {!compact && <>
+                    <ListItemText primary={<Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: location.pathname.startsWith("/leave") ? 650 : 500, color: "inherit !important" }}>Leave Management</Typography>} />
+                    {leaveOpen ? <ExpandMoreRounded sx={{ color: "inherit" }} /> : <ChevronRightIcon sx={{ color: "inherit" }} />}
+                  </>}
+                </ListItemButton>
+              </ListItem>
+              {leaveOpen && !compact && (
+                <Box sx={{ ml: 3.6, pl: 1.2, borderLeft: `1px solid ${isDark ? "#3E434D" : BORDER}`, mb: 1 }}>
+                  {leaveChildren.map((child) => {
+                    const selected = child.section === "balances" ? location.search.includes("section=balances") : child.section === "types" ? location.search.includes("section=types") : location.pathname === "/leave" && !location.search;
+                    return <ListItem key={child.section} disablePadding sx={{ mb: 0.4 }}>
+                      <ListItemButton onClick={() => handleNavClick(child.path)} sx={{ minHeight: 38, borderRadius: "8px", px: 1.4, backgroundColor: selected ? (isDark ? "rgba(255,255,255,0.10)" : "#E8E7E3") : "transparent", color: selected ? (isDark ? "#FFFFFF" : INK) : (isDark ? "#A7ADB7" : MUTED), "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F0F0ED", color: isDark ? "#FFFFFF" : INK } }}>
+                        <ListItemIcon sx={{ minWidth: 28, color: "inherit" }}>{child.icon}</ListItemIcon>
+                        <ListItemText primary={<Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: selected ? 700 : 500, color: "inherit !important" }}>{child.label}</Typography>} />
+                      </ListItemButton>
+                    </ListItem>;
+                  })}
+                </Box>
+              )}
+            </>
+          )}
+          {canViewAttendance && (
+            <>
+              <ListItem disablePadding sx={{ mb: 0.6 }}>
+                <ListItemButton
+                  onClick={() => compact ? handleNavClick(attendanceChildren[0]?.path || "/attendance/my-attendance") : setAttendanceOpen((open) => !open)}
+                  sx={{
+                    minHeight: 43, borderRadius: "10px", py: 1.05, px: compact ? 1.3 : 1.55,
+                    justifyContent: compact ? "center" : "flex-start",
+                    backgroundColor: location.pathname.startsWith("/attendance") ? (isDark ? "rgba(255, 255, 255, 0.12)" : INK) : "transparent",
+                    color: location.pathname.startsWith("/attendance") ? "#FFFFFF" : (isDark ? "#A7ADB7" : MUTED),
+                    border: location.pathname.startsWith("/attendance") && isDark ? "1px solid rgba(255, 255, 255, 0.14)" : "1px solid transparent",
+                    transition: "background-color 160ms ease, color 160ms ease",
+                    "&:hover": { backgroundColor: location.pathname.startsWith("/attendance") ? (isDark ? "rgba(255, 255, 255, 0.16)" : "#30333A") : (isDark ? "rgba(255, 255, 255, 0.06)" : "#F0F0ED"), color: isDark ? "#FFFFFF" : INK },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: compact ? 0 : 34, justifyContent: "center", color: location.pathname.startsWith("/attendance") ? "#FFFFFF !important" : (isDark ? "#A7ADB7 !important" : `${MUTED} !important`) }}><AccessTimeRounded sx={{ fontSize: 20 }} /></ListItemIcon>
+                  {!compact && <>
+                    <ListItemText primary={<Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: location.pathname.startsWith("/attendance") ? 650 : 500, color: "inherit !important" }}>Attendance</Typography>} />
+                    {attendanceOpen ? <ExpandMoreRounded sx={{ color: "inherit" }} /> : <ChevronRightIcon sx={{ color: "inherit" }} />}
+                  </>}
+                </ListItemButton>
+              </ListItem>
+              {attendanceOpen && !compact && (
+                <Box sx={{ ml: 3.6, pl: 1.2, borderLeft: `1px solid ${isDark ? "#3E434D" : BORDER}`, mb: 1 }}>
+                  {attendanceChildren.map((child) => {
+                    const selected = location.pathname === child.path || (child.path === "/attendance/my-attendance" && location.pathname === "/attendance");
+                    return <ListItem key={child.path} disablePadding sx={{ mb: 0.4 }}>
+                      <ListItemButton onClick={() => handleNavClick(child.path)} sx={{ minHeight: 38, borderRadius: "8px", px: 1.4, backgroundColor: selected ? (isDark ? "rgba(255,255,255,0.10)" : "#E8E7E3") : "transparent", color: selected ? (isDark ? "#FFFFFF" : INK) : (isDark ? "#A7ADB7" : MUTED), "&:hover": { backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F0F0ED", color: isDark ? "#FFFFFF" : INK } }}>
+                        <ListItemIcon sx={{ minWidth: 28, color: "inherit" }}>{child.icon}</ListItemIcon>
+                        <ListItemText primary={<Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: selected ? 700 : 500, color: "inherit !important" }}>{child.label}</Typography>} />
+                      </ListItemButton>
+                    </ListItem>;
+                  })}
+                </Box>
+              )}
+            </>
+          )}
+          {canViewOrganization && !isEmployee && !isManager && (
+            <>
+              <ListItem disablePadding sx={{ mb: 0.6 }}>
+                <ListItemButton
+                  onClick={() => setOrganizationOpen((open) => !open)}
+                  sx={{
+                    minHeight: 43,
+                    borderRadius: "10px",
+                    py: 1.05,
+                    px: compact ? 1.3 : 1.55,
+                    justifyContent: compact ? "center" : "flex-start",
+                    backgroundColor: location.pathname.startsWith("/organization")
+                      ? (isDark ? "rgba(255, 255, 255, 0.12)" : INK)
+                      : "transparent",
+                    color: location.pathname.startsWith("/organization")
+                      ? "#FFFFFF"
+                      : (isDark ? "#A7ADB7" : MUTED),
+                    border: location.pathname.startsWith("/organization") && isDark
+                      ? "1px solid rgba(255, 255, 255, 0.14)"
+                      : "1px solid transparent",
+                    transition: "background-color 160ms ease, color 160ms ease",
+                    "&:hover": {
+                      backgroundColor: location.pathname.startsWith("/organization")
+                        ? (isDark ? "rgba(255, 255, 255, 0.16)" : "#30333A")
+                        : (isDark ? "rgba(255, 255, 255, 0.06)" : "#F0F0ED"),
+                      color: isDark ? "#FFFFFF" : INK,
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: compact ? 0 : 34, justifyContent: "center", color: location.pathname.startsWith("/organization") ? "#FFFFFF !important" : (isDark ? "#A7ADB7 !important" : `${MUTED} !important`) }}>
+                    <BusinessRounded sx={{ fontSize: 20 }} />
+                  </ListItemIcon>
+                  {!compact && (
+                    <>
+                      <ListItemText
+                        primary={
+                          <Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: location.pathname.startsWith("/organization") ? 650 : 500, color: "inherit !important" }}>
+                            Org Management
+                          </Typography>
+                        }
+                      />
+                      {organizationOpen ? (
+                        <ExpandMoreRounded sx={{ color: "inherit" }} />
+                      ) : (
+                        <ChevronRightIcon sx={{ color: "inherit" }} />
+                      )}
+                    </>
+                  )}
+                </ListItemButton>
+              </ListItem>
+              {organizationOpen && !compact && (
+                <Box sx={{ ml: 3.6, pl: 1.2, borderLeft: `1px solid ${isDark ? "#3E434D" : BORDER}`, mb: 1 }}>
+                  {canAny("department.view", "department.create", "department.update", "department.deactivate") && (
+                    <ListItem disablePadding sx={{ mb: 0.4 }}>
+                      <ListItemButton
+                        onClick={() => handleNavClick("/organization/departments")}
+                        sx={{
+                          minHeight: 38,
+                          borderRadius: "8px",
+                          px: 1.4,
+                          backgroundColor: location.pathname === "/organization/departments"
+                            ? (isDark ? "rgba(255, 255, 255, 0.10)" : "#E8E7E3")
+                            : "transparent",
+                          color: location.pathname === "/organization/departments"
+                            ? (isDark ? "#FFFFFF" : INK)
+                            : (isDark ? "#A7ADB7" : MUTED),
+                          "&:hover": {
+                            backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "#F0F0ED",
+                            color: isDark ? "#FFFFFF" : INK,
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 28, color: "inherit" }}>
+                          <ApartmentRounded sx={{ fontSize: 17 }} />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: location.pathname === "/organization/departments" ? 700 : 500, color: "inherit !important" }}>
+                              Departments
+                            </Typography>
+                          }
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  )}
+                  {canAny("designation.view", "designation.create", "designation.update", "designation.deactivate") && (
+                    <ListItem disablePadding sx={{ mb: 0.4 }}>
+                      <ListItemButton
+                        onClick={() => handleNavClick("/organization/designations")}
+                        sx={{
+                          minHeight: 38,
+                          borderRadius: "8px",
+                          px: 1.4,
+                          backgroundColor: location.pathname === "/organization/designations"
+                            ? (isDark ? "rgba(255, 255, 255, 0.10)" : "#E8E7E3")
+                            : "transparent",
+                          color: location.pathname === "/organization/designations"
+                            ? (isDark ? "#FFFFFF" : INK)
+                            : (isDark ? "#A7ADB7" : MUTED),
+                          "&:hover": {
+                            backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "#F0F0ED",
+                            color: isDark ? "#FFFFFF" : INK,
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 28, color: "inherit" }}>
+                          <WorkOutlineRounded sx={{ fontSize: 17 }} />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: location.pathname === "/organization/designations" ? 700 : 500, color: "inherit !important" }}>
+                              Designations
+                            </Typography>
+                          }
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  )}
+                </Box>
+              )}
+            </>
+          )}
         </List>
       </Box>
 
       <Box sx={{ pt: 2 }}>
-        <Divider sx={{ mb: 2, borderColor: BORDER }} />
+        <Divider sx={{ mb: 2, borderColor: isDark ? "#444852" : "#E2E2DE" }} />
         {!compact && (
-          <Box sx={{ p: 1.5, borderRadius: "12px", backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+          <Box sx={{ p: 1.5, borderRadius: "12px", backgroundColor: isDark ? "#30343C" : "#FFFFFF", border: `1px solid ${isDark ? "#444852" : "#E2E2DE"}`, display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
             <Box>
-              <Typography sx={{ fontFamily: FONT, fontSize: "11px", color: MUTED, fontWeight: 500 }}>Current Role</Typography>
-              <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: 700, color: INK }}>{currentRoleLabel}</Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: "11px", color: isDark ? "#A7ADB7" : MUTED, fontWeight: 500 }}>Current Role</Typography>
+              <Typography sx={{ fontFamily: FONT, fontSize: "13px", fontWeight: 700, color: isDark ? "#F3F4F6" : INK }}>{currentRoleLabel}</Typography>
             </Box>
             <Chip label="Active" size="small" sx={{ fontFamily: FONT, fontSize: "10px", fontWeight: 700, height: 20, backgroundColor: "rgba(16,185,129,0.12)", color: "#059669" }} />
           </Box>
         )}
-        <Tooltip title={compact ? "Logout" : ""} placement="right">
-          <span>
-            <Button
-              fullWidth
-              startIcon={<LogoutRounded sx={{ fontSize: 18 }} />}
-              onClick={onLogout}
-              disabled={loggingOut}
-              sx={{
-                height: 42,
-                minWidth: 0,
-                px: compact ? 0 : 2,
-                borderRadius: "10px",
-                border: `1px solid ${BORDER}`,
-                backgroundColor: "#FFFFFF",
-                color: INK,
-                textTransform: "none",
-                fontFamily: FONT,
-                fontSize: "13px",
-                fontWeight: 600,
-                justifyContent: compact ? "center" : "flex-start",
-                "& .MuiButton-startIcon": { mx: compact ? 0 : undefined },
-                "&:hover": { backgroundColor: "rgba(22,24,29,0.05)", borderColor: INK, color: INK },
-              }}
-            >
-              {!compact && (loggingOut ? "Signing out…" : "Logout")}
-            </Button>
-          </span>
-        </Tooltip>
+
       </Box>
     </Box>
   );
@@ -255,7 +467,7 @@ export default function DashboardSidebar({
         open={mobileOpen}
         onClose={onMobileClose}
         ModalProps={{ keepMounted: true }}
-        sx={{ "& .MuiDrawer-paper": { boxSizing: "border-box", width: SIDEBAR_WIDTH } }}
+        sx={{ "& .MuiDrawer-paper": { boxSizing: "border-box", width: SIDEBAR_WIDTH, backgroundColor: isDark ? "#2B2E35" : "#F8F8F7" } }}
       >
         {sidebarContent}
       </Drawer>
