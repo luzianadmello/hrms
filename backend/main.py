@@ -1,12 +1,22 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from config import settings
 from database import engine
-from routes import auth, employee
-
+from routes import (
+    attendance,
+    auth,
+    employee,
+    organization,
+    holidays,
+    leave_types,
+    leave_balances,
+    leave_requests,
+)
 
 # Show the audit lines (who changed what) in the console
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +31,6 @@ app = FastAPI(
     openapi_url="/openapi.json" if is_dev else None,
 )
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -30,9 +39,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+logger = logging.getLogger(__name__)
 
+
+@app.exception_handler(SQLAlchemyError)
+async def database_error_handler(request: Request, exc: SQLAlchemyError):
+    """Return a readable JSON error for database failures."""
+    logger.exception("Database error on %s %s", request.method, request.url.path)
+
+    detail = "Database error. Check the backend logs."
+
+    if is_dev:
+        detail += f" ({type(exc).__name__}: {getattr(exc, 'orig', exc)})"
+        detail += " If this mentions a missing column or table, run `alembic upgrade head`."
+
+    return JSONResponse(status_code=500, content={"detail": detail})
+
+
+# API Routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(employee.router, prefix="/api/v1")
+app.include_router(organization.router, prefix="/api/v1")
+app.include_router(attendance.router, prefix="/api/v1")
+app.include_router(holidays.router, prefix="/api/v1")
+app.include_router(leave_types.router, prefix="/api/v1")
+app.include_router(leave_balances.router, prefix="/api/v1")
+app.include_router(leave_requests.router, prefix="/api/v1")
 
 
 @app.get("/")
@@ -40,8 +72,7 @@ def root():
     return {"message": "HRMS Backend is running"}
 
 
-# Debug endpoint: only exists in development, and never leaks the raw error
-# (connection errors can contain your DB host and credentials).
+# Debug endpoint: development only
 if settings.environment == "development":
 
     @app.get("/test-db")

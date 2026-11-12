@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str = "HS256"
     # Short-lived access token + longer-lived refresh token (both HttpOnly cookies)
-    access_token_expire_minutes: int = 15
+    access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     access_cookie_name: str = "access_token"
     refresh_cookie_name: str = "refresh_token"

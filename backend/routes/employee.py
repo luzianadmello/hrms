@@ -145,6 +145,7 @@ def get_all_employees(
 @router.post(
     "",
     response_model=CreateEmployeeResponse,
+    status_code=201,
 )
 def create_new_employee(
     data: CreateEmployeeRequest,

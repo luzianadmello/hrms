@@ -46,16 +46,18 @@ def create_employee(
         )
 
     # 3. Foreign key validation
-    if not db.get(Department, data.department_id):
+    department = db.get(Department, data.department_id)
+    if not department or department.status != "ACTIVE":
         raise HTTPException(
             status_code=400,
-            detail="Invalid department",
+            detail="Invalid or inactive department",
         )
 
-    if not db.get(Designation, data.designation_id):
+    designation = db.get(Designation, data.designation_id)
+    if not designation or designation.status != "ACTIVE":
         raise HTTPException(
             status_code=400,
-            detail="Invalid designation",
+            detail="Invalid or inactive designation",
         )
 
     if data.manager_id is not None and not (
@@ -68,9 +70,10 @@ def create_employee(
             detail="Invalid manager",
         )
 
-    # No password is created or sent here. The employee is Inactive until HR
-    # clicks Activate; until then the account holds a random password
-    # nobody knows and cannot log in.
+    # Store only a password hash. The account is always created Inactive with
+    # an unknown random credential; activation generates a fresh temporary
+    # password, replaces this hash, prints the formal email in development,
+    # and only then enables login. Plaintext passwords are never persisted.
     unusable_password = secrets.token_urlsafe(32)
 
     # 4. Create Employee + User in one transaction

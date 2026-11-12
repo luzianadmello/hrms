@@ -234,12 +234,14 @@ def get_employee_lookups(db: Session, current_user: User):
 
     departments = (
         db.query(Department)
+        .filter(Department.status == "ACTIVE")
         .order_by(Department.department_name)
         .all()
     )
 
     designations = (
         db.query(Designation)
+        .filter(Designation.status == "ACTIVE")
         .order_by(Designation.designation_name)
         .all()
     )
@@ -343,7 +345,6 @@ def _to_detail(
         "manager_name": _full_name(manager) if manager else None,
         "profile_completed": user.profile_completed if user else False,
         "is_active": user.is_active if user else True,
-        "last_login": user.last_login if user else None,
         "address_line1": address.address_line1 if address else None,
         "address_line2": address.address_line2 if address else None,
         "city": address.city if address else None,
@@ -363,7 +364,6 @@ def _limit_for_team(detail: dict) -> dict:
     for key in (
         "dob",
         "phone",
-        "last_login",
         "address_line1",
         "address_line2",
         "city",
@@ -664,86 +664,18 @@ def update_employee_by_id(
     fields = data.model_dump(exclude_unset=True)
     changes: dict[str, tuple] = {}
 
-    for key in ("first_name", "last_name"):
-        if key in fields and fields[key] is not None:
-            value = fields[key].strip()
-
-            if not value:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"{key.replace('_', ' ').capitalize()} "
-                        "cannot be empty or whitespace only"
-                    ),
-                )
-
-            setattr(employee, key, value)
-
-    if "phone" in fields:
-        employee.phone = fields["phone"]
-
-    if "dob" in fields:
-        employee.dob = fields["dob"]
-
-    # Address
-    address_data = {}
-
-    for key in ADDRESS_KEYS:
-        if key in fields:
-            value = fields[key]
-            address_data[key] = (
-                value.strip() if isinstance(value, str) else value
-            )
-
-    if address_data:
-        if employee.residential_address_id:
-            address = db.get(Address, employee.residential_address_id)
-
-            if not address:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Residential address not found",
-                )
-
-            for key, value in address_data.items():
-                if key == "address_line2":
-                    address.address_line2 = value or None
-                elif value:
-                    setattr(address, key, value)
-
-        else:
-            missing = [
-                key
-                for key in ADDRESS_REQUIRED
-                if not address_data.get(key)
-            ]
-
-            if missing:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Missing address fields: " + ", ".join(missing),
-                )
-
-            address = Address(
-                address_line1=address_data["address_line1"],
-                address_line2=address_data.get("address_line2") or None,
-                city=address_data["city"],
-                state=address_data["state"],
-                country=address_data["country"],
-                pincode=address_data["pincode"],
-            )
-
-            db.add(address)
-            db.flush()
-
-            employee.residential_address_id = address.address_id
-
     # Company details (HR / Admin only)
     if "department_id" in fields:
-        if fields["department_id"] is None or not db.get(
-            Department, fields["department_id"]
-        ):
-            raise HTTPException(status_code=400, detail="Invalid department")
+        department = (
+            db.get(Department, fields["department_id"])
+            if fields["department_id"] is not None
+            else None
+        )
+        if not department or department.status != ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or inactive department",
+            )
 
         changes["department_id"] = (
             employee.department_id,
@@ -752,10 +684,16 @@ def update_employee_by_id(
         employee.department_id = fields["department_id"]
 
     if "designation_id" in fields:
-        if fields["designation_id"] is None or not db.get(
-            Designation, fields["designation_id"]
-        ):
-            raise HTTPException(status_code=400, detail="Invalid designation")
+        designation = (
+            db.get(Designation, fields["designation_id"])
+            if fields["designation_id"] is not None
+            else None
+        )
+        if not designation or designation.status != ACTIVE:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or inactive designation",
+            )
 
         changes["designation_id"] = (
             employee.designation_id,
@@ -808,18 +746,7 @@ def update_employee_by_id(
                 new,
             )
 
-    # Check if user profile is complete
     user = target_user
-
-    if user and not user.profile_completed:
-        if (
-            employee.first_name
-            and employee.last_name
-            and employee.phone
-            and employee.dob
-            and employee.residential_address_id
-        ):
-            user.profile_completed = True
 
     db.commit()
     db.refresh(employee)

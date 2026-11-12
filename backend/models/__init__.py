@@ -8,3 +8,9 @@ from models.permission import Permission
 from models.role_permission import RolePermission
 from models.refresh_token import RefreshToken
 from models.role_creation_rule import RoleCreationRule
+from models.attendance import Attendance
+from models.attendance_policy import AttendancePolicy
+from models.holiday import Holiday
+from models.leave_type import LeaveType
+from models.leave_balance import LeaveBalance
+from models.leave_request import LeaveRequest

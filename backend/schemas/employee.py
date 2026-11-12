@@ -1,5 +1,5 @@
 import re
-from datetime import date, datetime
+from datetime import date
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -76,13 +76,14 @@ class EmployeeProfileUpdate(BaseModel):
         return value
 
 
-class EmployeeHRUpdate(EmployeeProfileUpdate):
-    """What HR / Admin may change on someone else's record.
+class EmployeeHRUpdate(BaseModel):
+    """What HR / Admin may change on someone else's record: company details only.
 
-    Everything in EmployeeProfileUpdate, plus the company fields. Unknown
-    fields are rejected (422) instead of being silently ignored.
-    Not editable here: employee id/code, work email, status, role,
-    profile_completed, last login (system-generated or changed by actions).
+    Personal details (name, phone, date of birth, address) belong to the
+    employee and are edited by them on their own profile. System-generated
+    values (employee id/code, work email, status, role, profile_completed)
+    are never editable here. Unknown fields are rejected (422) instead of
+    being silently ignored.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -172,7 +173,6 @@ class EmployeeDetailResponse(BaseModel):
     manager_name: str | None = None
     profile_completed: bool = False
     is_active: bool = True
-    last_login: datetime | None = None
 
     address_line1: str | None = None
     address_line2: str | None = None

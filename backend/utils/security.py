@@ -33,3 +33,19 @@ def generate_refresh_token() -> str:
 
 def hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+def create_access_token(data: dict) -> str:
+    now = datetime.now(timezone.utc)
+
+    payload = data.copy()
+    payload["type"] = "access"
+    payload["iat"] = now
+    payload["exp"] = now + timedelta(
+        minutes=settings.access_token_expire_minutes
+    )
+
+    return jwt.encode(
+        payload,
+        settings.secret_key,
+        algorithm=settings.algorithm
+    )
